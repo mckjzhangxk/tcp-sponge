@@ -35,10 +35,13 @@ FileDescriptor::FDWrapper::~FDWrapper() {
     }
 }
 
+
+
 //! \param[in] fd is the file descriptor number returned by [open(2)](\ref man2::open) or similar
 FileDescriptor::FileDescriptor(const int fd) : _internal_fd(make_shared<FDWrapper>(fd)) {}
 
 //! Private constructor used by duplicate()
+// 调用_internal_fd的移动构造器,非公开的构造器，为duplicate使用
 FileDescriptor::FileDescriptor(shared_ptr<FDWrapper> other_shared_ptr) : _internal_fd(move(other_shared_ptr)) {}
 
 //! \returns a copy of this FileDescriptor

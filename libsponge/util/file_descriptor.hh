@@ -21,7 +21,8 @@ class FileDescriptor {
         unsigned _write_count = 0;  //!< The numberof times FDWrapper::_fd has been written
 
         //! Construct from a file descriptor number returned by the kernel
-        explicit FDWrapper(const int fd);
+        //原生的unix fd的包装
+        explicit FDWrapper(const int fd);//不可以 FDWrapper fd=99;
         //! Closes the file descriptor upon destruction
         ~FDWrapper();
         //! Calls [close(2)](\ref man2::close) on FDWrapper::_fd
@@ -31,10 +32,10 @@ class FileDescriptor {
         //! An FDWrapper cannot be copied or moved
 
         //!@{
-        FDWrapper(const FDWrapper &other) = delete;
-        FDWrapper &operator=(const FDWrapper &other) = delete;
-        FDWrapper(FDWrapper &&other) = delete;
-        FDWrapper &operator=(FDWrapper &&other) = delete;
+        FDWrapper(const FDWrapper &other) = delete;//不允许 FDWrapper fd(fd1);
+        FDWrapper &operator=(const FDWrapper &other) = delete;//不允许 fd=fd1;
+        FDWrapper(FDWrapper &&other) = delete;//不允许 FDWrapper fd(getFD());
+        FDWrapper &operator=(FDWrapper &&other) = delete;//不允许 fd=getFD();
         //!@}
     };
 
@@ -74,6 +75,7 @@ class FileDescriptor {
     void close() { _internal_fd->close(); }
 
     //! Copy a FileDescriptor explicitly, increasing the FDWrapper refcount
+    //有问题
     FileDescriptor duplicate() const;
 
     //! Set blocking(true) or non-blocking(false)
