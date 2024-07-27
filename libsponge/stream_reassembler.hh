@@ -5,7 +5,7 @@
 
 #include <cstdint>
 #include <string>
-
+#include <deque>
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
 class StreamReassembler {
@@ -15,6 +15,16 @@ class StreamReassembler {
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
 
+
+
+
+    std::deque<char> buffer;
+    std::deque<char> buffer_valid;
+    size_t accept_index;//下一个可以被写入ByteStream的 【全局索引】
+    
+
+    void _pop(size_t n);
+    void _push(const string &data, const uint64_t index);
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
     //! \note This capacity limits both the bytes that have been reassembled,
