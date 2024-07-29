@@ -16,7 +16,11 @@ StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity),
                                                             _capacity(capacity),
                                                             buffer(capacity),
                                                             buffer_valid(capacity),
-                                                            accept_index(0) {}
+                                                            accept_index(0) {
+
+    _last_index=0xffffffffffffffff;
+
+}
 
 void StreamReassembler::_pop(size_t n) {
     for (size_t k = 0; k < n; k++){
@@ -27,7 +31,7 @@ void StreamReassembler::_pop(size_t n) {
     buffer_valid.resize(_capacity);
 }
 
-void StreamReassembler::_push(const std::string &data, uint64_t index){
+void StreamReassembler::_push(const string &data, const uint64_t index){
         if (index>=_capacity)
             return;
         
@@ -48,6 +52,9 @@ void StreamReassembler::_push(const std::string &data, uint64_t index){
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const uint64_t index, const bool eof) {
 
+    if(eof){
+        _last_index=index+data.size();
+    }
     if (index<=accept_index)//表示可接受的逻辑
     {
     
@@ -64,7 +71,11 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
             _push(data.substr(n),0);
             return;
         }
-
+        if (accept_index==_last_index)
+        {
+            _output.end_input();
+        }
+        
         size_t len=0;//计算最多有多少个 un assem的准备好了，可以被写出了
         for (size_t k = 0; k < buffer_valid.size(); k++){
             if (buffer_valid[k])
@@ -77,6 +88,10 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
             n=_output.write(string().assign(buffer.begin(),buffer.begin()+len));    
             _pop(n);
             accept_index+=n;
+            if (accept_index==_last_index)
+            {
+                _output.end_input();
+            }
         }
         
     }else{

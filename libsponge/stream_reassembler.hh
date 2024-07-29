@@ -21,10 +21,10 @@ class StreamReassembler {
     std::deque<char> buffer;
     std::deque<char> buffer_valid;
     size_t accept_index;//下一个可以被写入ByteStream的 【全局索引】
-    
+    size_t _last_index;
 
     void _pop(size_t n);
-    void _push(const std::string &data,  uint64_t index);
+    void _push(const string &data, const uint64_t index);
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
     //! \note This capacity limits both the bytes that have been reassembled,
