@@ -61,6 +61,14 @@ void StreamReassembler::_push(const string &data, const uint64_t index){
 //! \details This function accepts a substring (aka a segment) of bytes,
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
+
+// Failure message:
+// 	The reassembler was expected to have `2` total bytes assembled, but there were `3`
+
+// List of steps that executed successfully:
+// 	Initialized
+// 	Action:      substring submitted with data "b", index `1`, eof `0`
+// 	Action:      substring submitted with data "a", index `0`, eof `0`
 void StreamReassembler::push_substring(const string &data, const uint64_t index, const bool eof) {
     if(eof){
         _last_index=index+data.size();
@@ -97,7 +105,7 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
         }
         
         size_t len=0;//计算最多有多少个 un assem的准备好了，可以被写出了
-        for (size_t k = 0; k < buffer_valid.size(); k++){
+        for (size_t k = 0; k < _capacity; k++){
             if (buffer_valid[k])
                 len++;
             else
@@ -108,7 +116,7 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
             n=_output.write(string().assign(buffer.begin(),buffer.begin()+len));    
             _pop(n);
             accept_index+=n;
-                    if (accept_index==_last_index)
+            if (accept_index==_last_index)
             {
                 _output.end_input();
             }
