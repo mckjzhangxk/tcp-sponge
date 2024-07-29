@@ -39,7 +39,7 @@ class ByteStream {
     size_t remaining_capacity() const;
 
     //! Signal that the byte stream has reached its ending
-    void end_input(){_input_ended_flag = true; }
+    void end_input();
 
     //! Indicate that the stream suffered an error.
     void set_error() { _error = true; }
