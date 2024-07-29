@@ -16,9 +16,9 @@ StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity),
                                                             _capacity(capacity),
                                                             buffer(capacity),
                                                             buffer_valid(capacity),
-                                                            accept_index(0) {
+                                                            accept_index(0),
+                                                            _last_index(-1) {
 
-    _last_index=0xffffffffffffffff;
 
 }
 
