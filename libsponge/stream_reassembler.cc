@@ -12,76 +12,101 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 
-StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity), 
-                                                            _capacity(capacity),
-                                                            buffer(capacity),
-                                                            buffer_valid(capacity),
-                                                            accept_index(0) {}
+StreamReassembler::StreamReassembler(const size_t capacity) :  _output(capacity), _capacity(capacity) {
+                                                                
+ }
 
-void StreamReassembler::_pop(size_t n) {
-    for (size_t k = 0; k < n; k++){
-                buffer.pop_front();
-                buffer_valid.pop_front();
+long StreamReassembler::merge_block(block_node &elm1, const block_node &elm2) {
+    block_node x, y;
+    if (elm1.begin > elm2.begin) {
+        x = elm2;
+        y = elm1;
+    } else {
+        x = elm1;
+        y = elm2;
     }
-    buffer.resize(_capacity);
-    buffer_valid.resize(_capacity);
+    if (x.begin + x.length < y.begin) {
+        return -1;  // no intersection, couldn't merge
+    } else if (x.begin + x.length >= y.begin + y.length) {
+        elm1 = x;
+        return y.length;
+    } else {
+        elm1.begin = x.begin;
+        elm1.data = x.data + y.data.substr(x.begin + x.length - y.begin);
+        elm1.length = elm1.data.length();
+        return x.begin + x.length - y.begin;
+    }
 }
 
-void StreamReassembler::_push(const string &data, const uint64_t index){
-        if (index>=_capacity)
-            return;
-        
-        size_t sz=index+data.size();
-        if (sz>_capacity)
-            sz=_capacity;
-        
-        
-        for (size_t k = 0; k <sz; k++)
-        {
-           buffer[index+k]=data[k];
-           buffer_valid[index+k]=1;
-        }
-}
 
 //! \details This function accepts a substring (aka a segment) of bytes,
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const uint64_t index, const bool eof) {
-
-    if (index<=accept_index)//表示可接受的逻辑
-    {
     
-        if (accept_index>index+data.size()-1)//表示data已经被接受了
-        {
-            return;
-        }
-        size_t i=accept_index-index; //i 是accept_index 对应 data的索引
-        size_t n=_output.write( data.substr(i));
-        _pop(n);
-        accept_index+=n;
+  if (index >= _head_index + _capacity) {  // capacity over
+        return;
+    }
 
-        if(n<data.size()){
-            _push(data.substr(n),0);
-            return;
-        }
+    // handle extra substring prefix
+    block_node elm;
+    if (index + data.length() <= _head_index) {  // couldn't equal, because there have emtpy substring
+        goto JUDGE_EOF;
+    } else if (index < _head_index) {
+        size_t offset = _head_index - index;
+        elm.data.assign(data.begin() + offset, data.end());
+        elm.begin = index + offset;
+        elm.length = elm.data.length();
+    } else {
+        elm.begin = index;
+        elm.length = data.length();
+        elm.data = data;
+    }
+    _unassembled_byte += elm.length;
 
-        size_t len=0;//计算最多有多少个 un assem的准备好了，可以被写出了
-        for (size_t k = 0; k < buffer_valid.size(); k++){
-            if (buffer_valid[k])
-                len++;
-            else
+    // merge substring
+    do {
+        // merge next
+        long merged_bytes = 0;
+        auto iter = _blocks.lower_bound(elm);
+        while (iter != _blocks.end() && (merged_bytes = merge_block(elm, *iter)) >= 0) {
+            _unassembled_byte -= merged_bytes;
+            _blocks.erase(iter);
+            iter = _blocks.lower_bound(elm);
+        }
+        // merge prev
+        if (iter == _blocks.begin()) {
+            break;
+        }
+        iter--;
+        while ((merged_bytes = merge_block(elm, *iter)) >= 0) {
+            _unassembled_byte -= merged_bytes;
+            _blocks.erase(iter);
+            iter = _blocks.lower_bound(elm);
+            if (iter == _blocks.begin()) {
                 break;
+            }
+            iter--;
         }
-        if (len)
-        {
-            n=_output.write(string().assign(buffer.begin(),buffer.begin()+len));    
-            _pop(n);
-            accept_index+=n;
-        }
-        
-    }else{
-        size_t i=index-accept_index;//data  缓存在i 位置
-       _push(data,i);
+    } while (false);
+    _blocks.insert(elm);
+
+    // write to ByteStream
+    if (!_blocks.empty() && _blocks.begin()->begin == _head_index) {
+        const block_node head_block = *_blocks.begin();
+        // modify _head_index and _unassembled_byte according to successful write to _output
+        size_t write_bytes = _output.write(head_block.data);
+        _head_index += write_bytes;
+        _unassembled_byte -= write_bytes;
+        _blocks.erase(_blocks.begin());
+    }
+
+JUDGE_EOF:
+    if (eof) {
+        _eof_flag = true;
+    }
+    if (_eof_flag && empty()) {
+        _output.end_input();
     }
     
     
@@ -89,17 +114,7 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
 
 size_t StreamReassembler::unassembled_bytes() const { 
     
-    size_t r=0;
-    for (size_t i =0; i < buffer_valid.size(); i++)
-    {
-        if (buffer_valid[i])
-        {
-            r++;
-        }
-        
-    }
-    
-    return r; 
+    return _unassembled_byte;
 }
 
 bool StreamReassembler::empty() const { return unassembled_bytes()==0; }

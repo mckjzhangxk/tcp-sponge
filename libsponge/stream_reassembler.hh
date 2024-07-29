@@ -6,25 +6,30 @@
 #include <cstdint>
 #include <string>
 #include <deque>
+#include <set>
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
 class StreamReassembler {
   private:
     // Your code here -- add private members as necessary.
 
+  struct block_node {
+        size_t begin = 0;
+        size_t length = 0;
+        std::string data = "";
+        bool operator<(const block_node t) const { return begin < t.begin; }
+    };
+    std::set<block_node> _blocks = {};
+    size_t _unassembled_byte = 0;
+    size_t _head_index = 0;
+    bool _eof_flag = false;
+
+
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
 
-
-
-
-    std::deque<char> buffer;
-    std::deque<char> buffer_valid;
-    size_t accept_index;//下一个可以被写入ByteStream的 【全局索引】
+    long merge_block(block_node &elm1, const block_node &elm2);
     
-
-    void _pop(size_t n);
-    void _push(const string &data, const uint64_t index);
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
     //! \note This capacity limits both the bytes that have been reassembled,
