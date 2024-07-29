@@ -1,5 +1,7 @@
 #include "stream_reassembler.hh"
 
+#include <iostream>
+
 // Dummy implementation of a stream reassembler.
 
 // For Lab 1, please replace with a real implementation that passes the
@@ -38,18 +40,24 @@ void StreamReassembler::_pop(size_t n) {
 }
 
 void StreamReassembler::_push(const string &data, const uint64_t index){
-        if (index>=_capacity)
+        if (index>=_capacity){
+            std::cout<<"ccc"<<std::endl;
             return;
+        }
+
+
+        size_t lastIndex=index+data.size();
+        if (lastIndex>_capacity){
+            std::cout<<"ddd"<<std::endl;
+            lastIndex=_capacity;
+        }
+
         
-        size_t sz=index+data.size();
-        if (sz>_capacity)
-            sz=_capacity;
         
-        
-        for (size_t k = 0; k <sz; k++)
+        for (size_t k = index; k <lastIndex; k++)
         {
-           buffer[index+k]=data[k];
-           buffer_valid[index+k]=1;
+           buffer[k]=data[k-index];
+           buffer_valid[k]=1;
         }
 }
 
@@ -87,14 +95,18 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
         _pop(n);
         accept_index+=n;
 
+
+        if (accept_index==_last_index)
+        {
+            _output.end_input();
+            return;
+        }
+
         if(n<data.size()){
             _push(data.substr(n),0);
             return;
         }
-        if (accept_index==_last_index)
-        {
-            _output.end_input();
-        }
+
         
         size_t len=0;//计算最多有多少个 un assem的准备好了，可以被写出了
         for (size_t k = 0; k < buffer_valid.size(); k++){
@@ -105,18 +117,22 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
         }
         if (len)
         {
-            n=_output.write(string().assign(buffer.begin(),buffer.begin()+len));    
+            n=_output.write(string().assign(buffer.begin(),buffer.begin()+len));
             _pop(n);
             accept_index+=n;
-                    if (accept_index==_last_index)
+            if (accept_index==_last_index)
             {
                 _output.end_input();
             }
         }
         
     }else{
+        size_t o=unassembled_bytes();
+
         size_t i=index-accept_index;//data  缓存在i 位置
        _push(data,i);
+       size_t n=unassembled_bytes();
+       std::cout<<n-o<<" vs "<<data.size()<<std::endl;
     }
     
     

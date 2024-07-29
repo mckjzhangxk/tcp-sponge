@@ -19,9 +19,8 @@ using namespace std;
 ByteStream::ByteStream(const size_t capacity): _capacity(capacity) {  }
 
 size_t ByteStream::write(const string &data) {
-    if(_input_ended_flag){
-        _error=true;
-        return -1;
+    if(_input_ended_flag||_error){
+        throw runtime_error("try to write to a closed bytestream");
     }
     size_t len = data.length();
     if (len > _capacity - _buffer.size()) {
@@ -36,6 +35,9 @@ size_t ByteStream::write(const string &data) {
 
 //! \param[in] len bytes will be copied from the output side of the buffer
 string ByteStream::peek_output(const size_t len) const {
+    if(_error){
+        throw runtime_error("try to peek_output on a error bytestream");
+    }
     size_t length = len;
     if (length > _buffer.size()) {
         length = _buffer.size();
@@ -46,10 +48,10 @@ string ByteStream::peek_output(const size_t len) const {
 
 //! \param[in] len bytes will be removed from the output side of the buffer
 void ByteStream::pop_output(const size_t len) {
-    if (_error)
-    {
-        return;
+    if(_error){
+        throw runtime_error("try to pop_output on a error bytestream");
     }
+
     
     size_t length = len;
     if (length > _buffer.size()) {
