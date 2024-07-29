@@ -20,6 +20,12 @@ StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity),
                                                             _last_index(-1) {
 
 
+    for (size_t i = 0; i < _capacity; i++)
+    {
+        buffer_valid[i]=0;
+    }
+    
+                                       
 }
 
 void StreamReassembler::_pop(size_t n) {
@@ -27,8 +33,8 @@ void StreamReassembler::_pop(size_t n) {
                 buffer.pop_front();
                 buffer_valid.pop_front();
     }
-    buffer.resize(_capacity);
-    buffer_valid.resize(_capacity);
+    buffer.resize(_capacity,0);
+    buffer_valid.resize(_capacity,0);
 }
 
 void StreamReassembler::_push(const string &data, const uint64_t index){
@@ -47,6 +53,11 @@ void StreamReassembler::_push(const string &data, const uint64_t index){
         }
 }
 
+// List of steps that executed successfully:
+// 	Initialized
+// 	Action:      substring submitted with data "b", index `1`, eof `0`
+// 	Expectation: bytes in stream = ""
+// 	Action:      substring submitted with data "ab", index `0`, eof `0`
 //! \details This function accepts a substring (aka a segment) of bytes,
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
