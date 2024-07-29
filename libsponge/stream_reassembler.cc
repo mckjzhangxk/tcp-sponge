@@ -16,8 +16,7 @@ StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity),
                                                             _capacity(capacity),
                                                             buffer(capacity),
                                                             buffer_valid(capacity),
-                                                            accept_index(0),
-							_last_index(0xffffffffffffffff){
+                                                            accept_index(0) {
 
     _last_index=0xffffffffffffffff;
 
@@ -32,7 +31,7 @@ void StreamReassembler::_pop(size_t n) {
     buffer_valid.resize(_capacity);
 }
 
-void StreamReassembler::_push(const std::string &data, const uint64_t index){
+void StreamReassembler::_push(const string &data, const uint64_t index){
         if (index>=_capacity)
             return;
         
@@ -52,7 +51,10 @@ void StreamReassembler::_push(const std::string &data, const uint64_t index){
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const uint64_t index, const bool eof) {
-
+    if (data.size()==0)
+    {
+       return;
+    }
     if(eof){
         _last_index=index+data.size();
     }
@@ -89,7 +91,7 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
             n=_output.write(string().assign(buffer.begin(),buffer.begin()+len));    
             _pop(n);
             accept_index+=n;
-            if (accept_index==_last_index)
+                    if (accept_index==_last_index)
             {
                 _output.end_input();
             }
