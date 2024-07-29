@@ -27,7 +27,7 @@ void StreamReassembler::_pop(size_t n) {
     buffer_valid.resize(_capacity);
 }
 
-void StreamReassembler::_push(const string &data, const uint64_t index){
+void StreamReassembler::_push(const std::string &data, uint64_t index){
         if (index>=_capacity)
             return;
         

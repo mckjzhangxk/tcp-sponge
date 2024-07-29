@@ -24,7 +24,7 @@ class StreamReassembler {
     
 
     void _pop(size_t n);
-    void _push(const string &data, const uint64_t index);
+    void _push(const std::string &data,  uint64_t index);
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
     //! \note This capacity limits both the bytes that have been reassembled,
