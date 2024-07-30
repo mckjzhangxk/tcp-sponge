@@ -20,13 +20,6 @@ StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity),
                                                             buffer_valid(capacity),
                                                             accept_index(0),
                                                             _last_index(-1) {
-
-
-    for (size_t i = 0; i < _capacity; i++)
-    {
-        buffer_valid[i]=0;
-    }
-    
                                        
 }
 
@@ -61,6 +54,17 @@ void StreamReassembler::_push(const string &data, const uint64_t index){
         }
 }
 
+bool StreamReassembler::_accept_bytes(size_t n){
+     accept_index+=n;
+
+
+    if (accept_index==_last_index){
+            _output.end_input();
+            return true;
+    }else{
+        return false;
+    }
+}
 // List of steps that executed successfully:
 // 	Initialized
 // 	Action:      substring submitted with data "b", index `1`, eof `0`
@@ -70,13 +74,7 @@ void StreamReassembler::_push(const string &data, const uint64_t index){
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 
-// Failure message:
-// 	The reassembler was expected to have `2` total bytes assembled, but there were `3`
 
-// List of steps that executed successfully:
-// 	Initialized
-// 	Action:      substring submitted with data "b", index `1`, eof `0`
-// 	Action:      substring submitted with data "a", index `0`, eof `0`
 void StreamReassembler::push_substring(const string &data, const uint64_t index, const bool eof) {
     if(eof){
         _last_index=index+data.size();
@@ -84,34 +82,26 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
 
     if (data.size()==0)
     {
-        if (accept_index==_last_index)
-        {
-            _output.end_input();
-        }
-      return;
+        if (_accept_bytes(0))
+            return;
     }
 
-    if (index<=accept_index)//表示可接受的逻辑
+    if(accept_index<index){
+        size_t i=index-accept_index;//data  缓存在i 位置
+       _push(data,i);
+    }else if(index<=accept_index &&accept_index< (index+data.size()))//表示可接受的逻辑
     {
-    
-        if (accept_index>index+data.size()-1)//表示data已经被接受了
-        {
-            return;
-        }
         size_t i=accept_index-index; //i 是accept_index 对应 data的索引
-        size_t n=_output.write( data.substr(i));
+        std::string&& d=data.substr(i);
+        size_t n=_output.write( d);
         _pop(n);
-        accept_index+=n;
-
-
-        if (accept_index==_last_index)
+        if (_accept_bytes(n))
         {
-            _output.end_input();
             return;
         }
 
-        if(n<data.size()){
-            _push(data.substr(n),0);
+        if(n<d.size()){
+            _push(d.substr(n),0);
             return;
         }
 
@@ -123,26 +113,23 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
             else
                 break;
         }
+        size_t max_accept=_last_index-accept_index;
+        if (len>max_accept)
+        {
+           len=max_accept;
+        }
+        
         if (len)
         {
             n=_output.write(string().assign(buffer.begin(),buffer.begin()+len));
             _pop(n);
-            accept_index+=n;
-            if (accept_index==_last_index)
+            if (_accept_bytes(n))
             {
-                _output.end_input();
+                return;
             }
         }
         
-    }else{
-        size_t o=unassembled_bytes();
-
-        size_t i=index-accept_index;//data  缓存在i 位置
-       _push(data,i);
-       size_t n=unassembled_bytes();
-       std::cout<<n-o<<" vs "<<data.size()<<std::endl;
-    }
-    
+    }    
     
 }
 
