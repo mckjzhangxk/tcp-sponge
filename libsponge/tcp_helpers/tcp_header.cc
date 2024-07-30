@@ -19,7 +19,7 @@ ParseResult TCPHeader::parse(NetParser &p) {
     dport = p.u16();                 // destination port
     seqno = WrappingInt32{p.u32()};  // sequence number
     ackno = WrappingInt32{p.u32()};  // ack number
-    doff = p.u8() >> 4;              // data offset
+    doff = p.u8() >> 4;              // data offset, [doff(4) reverse(4)]
 
     const uint8_t fl_b = p.u8();                  // byte including flags
     urg = static_cast<bool>(fl_b & 0b0010'0000);  // binary literals and ' digit separator since C++14!!!
@@ -33,11 +33,12 @@ ParseResult TCPHeader::parse(NetParser &p) {
     cksum = p.u16();  // checksum
     uptr = p.u16();   // urgent pointer
 
-    if (doff < 5) {
+    if (doff < 5) {//doff是 data的偏移 /4
         return ParseResult::HeaderTooShort;
     }
 
     // skip any options or anything extra in the header
+    //不支持option的tcp
     p.remove_prefix(doff * 4 - TCPHeader::LENGTH);
 
     if (p.error()) {
