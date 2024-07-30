@@ -30,19 +30,30 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
     
     WrappingInt32 n1=wrap(checkpoint,isn);
-    int64_t diff=n-n1,diff1;
-    
+    int64_t diff=n-n1,diff1,r;
+    uint64_t pos_diff=0;
     if (diff<0)
     {
         diff1=diff+(1ul<<32);
+        pos_diff=diff1;
     }else if(diff>0){
         diff1=diff-(1ul<<32);
+        pos_diff=diff;
     }else{
         diff1=0;
     }
     
     if(abs(diff)>abs(diff1))
-        diff=diff1;
-    
-    return diff+checkpoint;
+        r=diff1;
+    else
+        r=diff;
+
+    if(r>=0){
+    	return checkpoint+diff;
+
+    }else if(checkpoint>=static_cast<uint64_t>(-r) ){
+        return checkpoint-static_cast<uint64_t>(-r);
+    } else{
+        return checkpoint+pos_diff;
+    }
 }
