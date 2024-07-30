@@ -30,16 +30,19 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
     
     WrappingInt32 n1=wrap(checkpoint,isn);
-    uint64_t diff=0;
-
-    if (n.raw_value()>n1.raw_value())
+    int64_t diff=n-n1,diff1;
+    
+    if (diff<0)
     {
-        diff=n.raw_value()-n1.raw_value();
-    }else if(n.raw_value()<n1.raw_value()){
-        diff=n.raw_value()+(1<<32)-n1.raw_value();
+        diff1=diff+(1ul<<32);
+    }else if(diff>0){
+        diff1=diff-(1ul<<32);
     }else{
-        diff=0;
+        diff1=0;
     }
+    
+    if(abs(diff)>abs(diff1))
+        diff=diff1;
     
     return diff+checkpoint;
 }
