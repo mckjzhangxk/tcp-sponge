@@ -51,9 +51,11 @@ struct TCPHeader {
     //!@}
 
     //! Parse the TCP fields from the provided NetParser
+    //从流对象p读取 TCP Header，保存在成员变量中
     ParseResult parse(NetParser &p);
 
     //! Serialize the TCP fields
+    //把 TCP Header 导出成byte数组
     std::string serialize() const;
 
     //! Return a string containing a header in human-readable format

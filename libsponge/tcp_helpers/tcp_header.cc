@@ -49,6 +49,7 @@ ParseResult TCPHeader::parse(NetParser &p) {
 }
 
 //! Serialize the TCPHeader to a string (does not recompute the checksum)
+//把 TCPHeader转换成 string(或者理解成bytes[])
 string TCPHeader::serialize() const {
     // sanity check
     if (doff < 5) {

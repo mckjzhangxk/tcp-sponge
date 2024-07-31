@@ -14,9 +14,11 @@ class TCPSegment {
 
   public:
     //! \brief Parse the segment from a string
+    // 把buffer 的内容解析到 TCPHeader和payload中
     ParseResult parse(const Buffer buffer, const uint32_t datagram_layer_checksum = 0);
 
     //! \brief Serialize the segment to a string
+    // TCP Header,TCP Payload 成为BufferList的2个成员
     BufferList serialize(const uint32_t datagram_layer_checksum = 0) const;
 
     //! \name Accessors
@@ -30,6 +32,7 @@ class TCPSegment {
 
     //! \brief Segment's length in sequence space
     //! \note Equal to payload length plus one byte if SYN is set, plus one byte if FIN is set
+    // 表示这个TCPSegment的长度，_header中的 SYN,FIN标志各占一个字节
     size_t length_in_sequence_space() const;
 };
 

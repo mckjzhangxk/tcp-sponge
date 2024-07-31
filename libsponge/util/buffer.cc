@@ -8,7 +8,7 @@ void Buffer::remove_prefix(const size_t n) {
     }
     _starting_offset += n;
     if (_storage and _starting_offset == _storage->size()) {
-        _storage.reset();
+        _storage.reset();//重置成null指针
     }
 }
 
@@ -66,7 +66,7 @@ void BufferList::remove_prefix(size_t n) {
 
 BufferViewList::BufferViewList(const BufferList &buffers) {
     for (const auto &x : buffers.buffers()) {
-        _views.push_back(x);
+        _views.push_back(x);//Buffer可以转成StringView
     }
 }
 

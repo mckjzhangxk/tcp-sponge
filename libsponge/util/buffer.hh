@@ -24,13 +24,14 @@ class Buffer {
 
     //! \name Expose contents as a std::string_view
     //!@{
+    //<_storage.data,_storage.size() >
     std::string_view str() const {
         if (not _storage) {
             return {};
         }
         return {_storage->data() + _starting_offset, _storage->size() - _starting_offset};
     }
-
+    //把Buffer 转成string_view
     operator std::string_view() const { return str(); }
     //!@}
 
@@ -45,6 +46,7 @@ class Buffer {
 
     //! \brief Discard the first `n` bytes of the string (does not require a copy or move)
     //! \note Doesn't free any memory until the whole string has been discarded in all copies of the Buffer.
+    //通过 设置偏移 表示消耗字节,当全部移除的时候，智能指针重置为null
     void remove_prefix(const size_t n);
 };
 
@@ -69,7 +71,7 @@ class BufferList {
     //! \brief Construct by taking ownership of a std::string
     BufferList(std::string &&str) noexcept {
         Buffer buf{std::move(str)};
-        append(buf);
+        append(buf);// BufferList{Buffer}
     }
     //!@}
 
@@ -77,6 +79,7 @@ class BufferList {
     const std::deque<Buffer> &buffers() const { return _buffers; }
 
     //! \brief Append a BufferList
+    // other下面的buffer 追加到本bufferlist中
     void append(const BufferList &other);
 
     //! \brief Transform to a Buffer
@@ -84,12 +87,15 @@ class BufferList {
     operator Buffer() const;
 
     //! \brief Discard the first `n` bytes of the string (does not require a copy or move)
+    //类似BufferViewList的remove_prefix,用于移出n个字节
     void remove_prefix(size_t n);
 
     //! \brief Size of the string
+    // 总字节数量
     size_t size() const;
 
     //! \brief Make a copy to a new std::string
+    //把BufferList的buffer组成一个大的string
     std::string concatenate() const;
 };
 
@@ -108,16 +114,22 @@ class BufferViewList {
     BufferViewList(const char *s) : BufferViewList(std::string_view(s)) {}
 
     //! \brief Construct from a BufferList
+    //BufferList转 BufferViewList
+    // BufferViewList里面存的是stringview,而BufferList里面存的是Buffer
     BufferViewList(const BufferList &buffers);
 
     //! \brief Construct from a std::string_view
+    //核心构造方法，把string_view加入到_views中
+    // StringView= <*data,size>
     BufferViewList(std::string_view str) { _views.push_back({const_cast<char *>(str.data()), str.size()}); }
     //!@}
 
     //! \brief Discard the first `n` bytes of the string (does not require a copy or move)
+    // 从 _views中移出n个字节
     void remove_prefix(size_t n);
 
     //! \brief Size of the string
+    // _views中 字节的总数
     size_t size() const;
 
     //! \brief Convert to a vector of `iovec` structures

@@ -11,8 +11,8 @@ using namespace std;
 //! \param[in] datagram_layer_checksum pseudo-checksum from the lower-layer protocol
 ParseResult TCPSegment::parse(const Buffer buffer, const uint32_t datagram_layer_checksum) {
     InternetChecksum check(datagram_layer_checksum);
-    check.add(buffer);
-    if (check.value()) {
+    check.add(buffer);  //全部数据加入校验计算
+    if (check.value()) {//sum bytes=0，表示校验成功
         return ParseResult::BadChecksum;
     }
 
@@ -38,8 +38,8 @@ BufferList TCPSegment::serialize(const uint32_t datagram_layer_checksum) const {
     header_out.cksum = check.value();
 
     BufferList ret;
-    ret.append(header_out.serialize());
-    ret.append(_payload);
+    ret.append(header_out.serialize());//BufferList{string}
+    ret.append(_payload);//BufferList{Buffer}
 
     return ret;
 }

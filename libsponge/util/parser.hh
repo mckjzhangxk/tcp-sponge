@@ -30,6 +30,7 @@ class NetParser {
     void _check_size(const size_t size);
 
     //! Generic integer parsing method (used by u32, u16, u8)
+    //从_buffer中 提取不同类型的整数，返回，并且pop对应的内容
     template <typename T>
     T _parse_int();
 
@@ -63,7 +64,7 @@ class NetParser {
 
 struct NetUnparser {
     template <typename T>
-    static void _unparse_int(std::string &s, T val);
+    static void _unparse_int(std::string &s, T val);//把val的每个byte加入到s，从val的 最高位开始
 
     //! Write a 32-bit integer into the data stream in network byte order
     static void u32(std::string &s, const uint32_t val);
