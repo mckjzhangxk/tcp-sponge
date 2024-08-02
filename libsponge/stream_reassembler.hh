@@ -11,21 +11,28 @@
 class StreamReassembler {
   private:
     // Your code here -- add private members as necessary.
-
+    struct Block
+    {
+      uint64_t start_index;
+      uint64_t end_index;
+      std::string data;
+    };
+    
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
 
 
 
+    uint64_t _accept_index;//下一个可以被写入ByteStream的 【全局索引】
+    uint64_t _eof_index;
 
-    std::deque<char> buffer;
-    std::deque<char> buffer_valid;
-    size_t accept_index;//下一个可以被写入ByteStream的 【全局索引】
-    size_t _last_index;
+    std::list<Block> _blocks;
+    size_t _block_sz;
 
-    void _pop(size_t n);
     void _push(const std::string &data, const uint64_t index);
-    bool _accept_bytes(size_t n);
+
+    std::optional<Block> _pop();
+    bool _accept_bytes();
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
     //! \note This capacity limits both the bytes that have been reassembled,

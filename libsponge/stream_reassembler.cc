@@ -16,49 +16,150 @@ using namespace std;
 
 StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity), 
                                                             _capacity(capacity),
-                                                            buffer(capacity),
-                                                            buffer_valid(capacity),
-                                                            accept_index(0),
-                                                            _last_index(-1) {
+                                                            _accept_index(0),
+                                                            _eof_index(-1),
+                                                            _blocks(std::list<Block>{}),
+                                                            _block_sz(0){
                                        
 }
 
-void StreamReassembler::_pop(size_t n) {
-    for (size_t k = 0; k < n; k++){
-                buffer.pop_front();
-                buffer_valid.pop_front();
-    }
-    buffer.resize(_capacity,0);
-    buffer_valid.resize(_capacity,0);
-}
+// data 由于以下原因 不具备 写入 ByteStream的条件
+// A. ByteStream 容量满了(index==_accept_index)
+// B. index与 ByteStream 中的seq不连续(index>_accept_index)
+// 所以 本方法是把这些 无法进入ByteStream 缓存到 StreamReassembler中
+void StreamReassembler::_push(const string &data, const uint64_t start_index){
+        
+        if(start_index<_accept_index)//已经在ByteStream中，不需要放在reassembler中了
+            return;
+        uint64_t capacity_end_index=_accept_index+_capacity;
 
-void StreamReassembler::_push(const string &data, const uint64_t index){
-        if (index>=_capacity){
-            std::cout<<"ccc"<<std::endl;
+        if (start_index>=capacity_end_index){//reassembler 容量不足，无法放置多余字节
             return;
         }
+        
+        uint64_t end_index=  min(start_index+data.size(),capacity_end_index);
+        
+        
+        
+        std::string_view dv={data.data(),end_index-start_index};//可以存放的数据
 
+        std::list<Block>::iterator it ;
 
-        size_t lastIndex=index+data.size();
-        if (lastIndex>_capacity){
-            std::cout<<"ddd"<<std::endl;
-            lastIndex=_capacity;
+        // x=<start_index,end_index,dv> 是本次需要缓存的内容
+
+        // 本次循环的目的是找到一个"可以合并"的单元it，把 x合并到it中
+        // "可以合并"是指 index 在 [it.start_index,it.end_index]区间范围内
+        //  合并过程： 1. dv[it.end_index-index] 追加到 it.data后
+        //           2.  it.end_index=end_index
+
+        //如果上面的 匹配对所有的_block都不成立，是由于以下之一的原因造成的
+        //1.index 小于 _block中 【最小 起始索引】,此时x转换成一个BLOCK，插入到 _block的最前头
+        //2. index 大于  _block中【最大 终止索引】，插入到 _block的最后头
+
+        for (it = _blocks.begin(); it != _blocks.end(); ++it) {
+            if(  it->start_index<=start_index ){
+
+                    if(start_index<=it->end_index){
+                        if(end_index> it->end_index){
+                            _block_sz+=end_index-it->end_index;
+
+                            uint64_t subIndex=it->end_index-start_index;
+                            it->data.append(dv.substr(subIndex));
+                            it->end_index=end_index;
+                        }
+    
+                        break;
+                    }
+                    
+
+            }else if (start_index<it->start_index){
+                struct Block b{start_index,end_index,std::string{dv}};
+                _blocks.insert(it,b);
+                it--;
+                _block_sz+=b.data.size();
+                break;
+            }
+            
         }
+        
 
-        
-        
-        for (size_t k = index; k <lastIndex; k++)
+        if (it!=_blocks.end())//此时，it.startindex<(it+1).start,但是it.endindex可能 大于(it+1).start
         {
-           buffer[k]=data[k-index];
-           buffer_valid[k]=1;
+            //经过之前的匹配，it是经过<start_index,end_index,dv>合并后的元素
+            // it后面还可能存在 联系"满足与it 合并"的元素
+            //"满足与it 合并"是指：  (it+1).start_index   <=it.end_index
+            
+            //合并的策略是， 把it+1 的<start_index,end_index,data> 合并入it,从_block中删除 it+1, 
+            //如此反复，指定 "合并条件不成立"
+
+            //合并的方法 it+1 <start_index,end_index,data>
+
+            //1. 把  (it+1).data[it.end_index-(it+1).start_index] 追加到it.data
+            //2. it.end_index =(it+1).end_index
+
+            std::list<Block>::iterator front=it;
+            
+            while(++it != _blocks.end()){
+                if( front->end_index >= it->start_index ){
+                     _block_sz-=(front->data.size()+it->data.size());
+                    uint64_t subIndex=front->end_index-it->start_index;
+
+
+                    front->data.append(it->data.substr(subIndex));
+                    front->end_index=it->end_index;
+
+                    _block_sz+=front->data.size();
+
+                    _blocks.erase(it);
+                    it=front;
+           
+                }else{
+                    break;
+                }    
+            }   
+
+        }else{
+            struct Block b{start_index,end_index,std::string{dv}};
+            _blocks.emplace_back(b);
+            _block_sz+=b.data.size();
         }
+        
 }
 
-bool StreamReassembler::_accept_bytes(size_t n){
-     accept_index+=n;
+
+std::optional<StreamReassembler::Block> StreamReassembler::_pop(){
+    std::optional<Block> r;
+
+    if (_blocks.size()>0){
+        Block& b=_blocks.front();
+        
+        
+        if(b.start_index>_accept_index){
+                return r;
+        }
+        _blocks.pop_front();
+        _block_sz-=b.data.size();
 
 
-    if (accept_index==_last_index){
+                            
+        // b.start_index=_accept_index;
+        
+        if(b.end_index>_eof_index){
+            b.end_index=_eof_index;
+            b.data=b.data.substr(0,_eof_index-_accept_index);
+        }
+
+        r=b;
+        return r;
+        
+    }
+    
+    return r;
+ }
+bool StreamReassembler::_accept_bytes(){
+     _accept_index=_output.bytes_written();
+
+    if (_accept_index==_eof_index){
             _output.end_input();
             return true;
     }else{
@@ -77,75 +178,47 @@ bool StreamReassembler::_accept_bytes(size_t n){
 
 void StreamReassembler::push_substring(const string &data, const uint64_t index, const bool eof) {
     if(eof){
-        _last_index=index+data.size();
+        _eof_index=index+data.size();
     }
 
     if (data.size()==0)
     {
-        if (_accept_bytes(0))
+        if (_accept_bytes())
             return;
     }
 
-    if(accept_index<index){
-        size_t i=index-accept_index;//data  缓存在i 位置
-       _push(data,i);
-    }else if(index<=accept_index &&accept_index< (index+data.size()))//表示可接受的逻辑
-    {
-        size_t i=accept_index-index; //i 是accept_index 对应 data的索引
-        std::string&& d=data.substr(i);
-        size_t n=_output.write( d);
-        _pop(n);
-        if (_accept_bytes(n))
-        {
-            return;
-        }
-
-        if(n<d.size()){
-            _push(d.substr(n),0);
-            return;
-        }
-
-        
-        size_t len=0;//计算最多有多少个 un assem的准备好了，可以被写出了
-        for (size_t k = 0; k < _capacity; k++){
-            if (buffer_valid[k])
-                len++;
-            else
-                break;
-        }
-        size_t max_accept=_last_index-accept_index;
-        if (len>max_accept)
-        {
-           len=max_accept;
-        }
-        
-        if (len)
-        {
-            n=_output.write(string().assign(buffer.begin(),buffer.begin()+len));
-            _pop(n);
-            if (_accept_bytes(n))
-            {
-                return;
-            }
-        }
-        
-    }    
+    _push(data,index);
     
-}
+    auto r=_pop();
+    if(r.has_value()){
+        size_t n=_output.write(r->data);
+        if (_accept_bytes())
+            return;
+        if(n<r->data.size()){
+            _push(r->data.substr(n),_accept_index);
+        }
+    }    
+}  
+    
+    
+        //走到这里说明 本次pushstring(data,index),data已经全部都写入到ByteStream中的
+        // 1.data已经全部都写入到ByteStream中的， ByteStream没有满
+        // 2. _accept_index 由于这次write 而被更新
+
+        // 所以我应该从_block中哪些满足写入 ByteStream中的block 取出后写入到 ByteStream
+        // 【满足】的意思是 it.start_index<=accept_index
+       
+
+        
+       
+
+    
+        
+  
+    
 
 size_t StreamReassembler::unassembled_bytes() const { 
-    
-    size_t r=0;
-    for (size_t i =0; i < buffer_valid.size(); i++)
-    {
-        if (buffer_valid[i])
-        {
-            r++;
-        }
-        
-    }
-    
-    return r; 
+    return _block_sz; 
 }
 
 bool StreamReassembler::empty() const { return unassembled_bytes()==0; }
