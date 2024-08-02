@@ -5,7 +5,7 @@
 
 #include <cstdint>
 #include <string>
-#include <deque>
+#include <optional>
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
 class StreamReassembler {
@@ -29,7 +29,7 @@ class StreamReassembler {
     std::list<Block> _blocks;
     size_t _block_sz;
 
-    void _push(const std::string &data, const uint64_t index);
+    void _push(const std::string &data,  uint64_t index);
 
     std::optional<Block> _pop();
     bool _accept_bytes();

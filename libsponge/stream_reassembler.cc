@@ -28,7 +28,7 @@ StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity),
 // B. index与 ByteStream 中的seq不连续(index>_accept_index)
 // 所以 本方法是把这些 无法进入ByteStream 缓存到 StreamReassembler中
 void StreamReassembler::_push(const string &data, const uint64_t start_index){
-        
+
         if(start_index<_accept_index)//已经在ByteStream中，不需要放在reassembler中了
             return;
         uint64_t capacity_end_index=_accept_index+_capacity;
@@ -41,7 +41,7 @@ void StreamReassembler::_push(const string &data, const uint64_t start_index){
         
         
         
-        std::string_view dv={data.data(),end_index-start_index};//可以存放的数据
+        std::string_view dv={data.data(),end_index-start_index};//存放的数据
 
         std::list<Block>::iterator it ;
 
@@ -64,6 +64,7 @@ void StreamReassembler::_push(const string &data, const uint64_t start_index){
                             _block_sz+=end_index-it->end_index;
 
                             uint64_t subIndex=it->end_index-start_index;
+
                             it->data.append(dv.substr(subIndex));
                             it->end_index=end_index;
                         }
@@ -104,9 +105,11 @@ void StreamReassembler::_push(const string &data, const uint64_t start_index){
                      _block_sz-=(front->data.size()+it->data.size());
                     uint64_t subIndex=front->end_index-it->start_index;
 
+                    if(subIndex<it->data.size()){
+                        front->data.append(it->data.substr(subIndex));
+                        front->end_index=it->end_index;
+                    }
 
-                    front->data.append(it->data.substr(subIndex));
-                    front->end_index=it->end_index;
 
                     _block_sz+=front->data.size();
 
@@ -137,19 +140,20 @@ std::optional<StreamReassembler::Block> StreamReassembler::_pop(){
         if(b.start_index>_accept_index){
                 return r;
         }
+        r=b;
         _blocks.pop_front();
-        _block_sz-=b.data.size();
+        _block_sz-=r->data.size();
 
 
                             
         // b.start_index=_accept_index;
         
         if(b.end_index>_eof_index){
-            b.end_index=_eof_index;
-            b.data=b.data.substr(0,_eof_index-_accept_index);
+            r->end_index=_eof_index;
+            r->data=r->data.substr(0,_eof_index-_accept_index);
         }
 
-        r=b;
+
         return r;
         
     }
@@ -187,8 +191,16 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
             return;
     }
 
-    _push(data,index);
-    
+    if (index<_accept_index){
+        uint64_t end_index=index+data.size();
+        if (end_index<=_accept_index)
+            return;
+        _push(data.substr(_accept_index-index),_accept_index);
+
+    } else{
+        _push(data,index);
+    }
+
     auto r=_pop();
     if(r.has_value()){
         size_t n=_output.write(r->data);
