@@ -28,7 +28,8 @@ StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity),
 // B. index与 ByteStream 中的seq不连续(index>_accept_index)
 // 所以 本方法是把这些 无法进入ByteStream 缓存到 StreamReassembler中
 void StreamReassembler::_push(const string &data, const uint64_t start_index){
-
+        if(data.size()==0)
+            return;
         if(start_index<_accept_index)//已经在ByteStream中，不需要放在reassembler中了
             return;
         uint64_t capacity_end_index=_accept_index+_capacity;
