@@ -34,7 +34,9 @@
       _current_ticks=0;
       _muls=1;
     }
-    
+    void reset(){
+        _current_ticks=0;
+    }
     uint32_t get_muls()const{
        return _muls;
     }

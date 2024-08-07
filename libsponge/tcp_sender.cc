@@ -51,7 +51,7 @@ void TCPSender::fill_window() {
 
     size_t remain=_sws-bytes_in_flight();
 
-    while (remain>0&&_stream.buffer_size()>0)
+    while (remain>0&&!_fin_send)
     {
         TCPSegment seg;
         seg.header().seqno=wrap(_next_seqno,_isn);
@@ -59,26 +59,19 @@ void TCPSender::fill_window() {
         int n=min(remain,TCPConfig::MAX_PAYLOAD_SIZE);
         
         std::string sendData=_stream.read(n);
-    
         seg.payload()=Buffer(std::move(sendData));
 
-        _transmit(seg);
-
-
-        remain-=sendData.size();
+        if (remain>seg.payload().size()&&_stream.eof()){
+            _fin_send=true;
+            seg.header().fin=true;
+        }
+        if(seg.length_in_sequence_space()>0)
+            _transmit(seg);
+        else
+            break ;
+        remain-=seg.length_in_sequence_space();
     }
 
-    if(remain>0&&_stream.eof()&&!_fin_send){//fin只会发送一次
-        _fin_send=true;
-
-        TCPSegment seg;
-        seg.header().seqno=wrap(_next_seqno,_isn);
-        seg.header().fin=true;
-        _transmit(seg);
-        
-    }
-
-    
 }
 
 //! \param ackno The remote receiver's ackno (acknowledgment number)
@@ -89,8 +82,12 @@ bool TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     uint64_t old_ackno=_ackno;
     uint64_t new_ackno= unwrap(ackno,_isn,_next_seqno);
     
-    if(new_ackno<=old_ackno)
-        return true;
+    if(new_ackno<=old_ackno){
+	 if(new_ackno==old_ackno)
+	    _sws=window_size;
+	 return true;
+    }
+    
     if(new_ackno>_next_seqno)
         return false;
     
@@ -109,7 +106,7 @@ bool TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void TCPSender::tick(const size_t ms_since_last_tick) { 
     if(_timer.expire(ms_since_last_tick)){
-        _timer.stop();
+        _timer.reset();
         _timer.double_mul();
 
         TCPSegment seg;
@@ -118,7 +115,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
 
         if(_ackno==0)
             seg.header().syn=true;
-        if(_fin_send&&(_ackno+1==_next_seqno)){
+	else if(_fin_send&&(_ackno+1==_next_seqno)){
             seg.header().fin=true;
         }else{
             seg.payload()=payload;
