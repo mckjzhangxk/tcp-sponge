@@ -8,6 +8,7 @@
 
 #include <functional>
 #include <queue>
+#include <optional>
 
 
   class Timer{
@@ -63,17 +64,18 @@ class TCPSender {
     ByteStream _stream;
 
 
-    std::optional<uint64_t> _ackno;
-    bool _fin_send;
     uint64_t _sws;//send window size
 
-    std::deque<char>  _window_data;
     //! the (absolute) sequence number for the next byte to be sent
-    uint64_t _next_seqno{0};
+    uint64_t _next_seqno;
     
 
-    Timer _timer;
 
+    uint64_t _ackno;
+    Timer _timer;
+    bool _syn_send;
+    bool _fin_send;
+    
     BufferList _outstanding_segs;
 
 
@@ -81,7 +83,12 @@ class TCPSender {
           _segments_out.push(seg);
           if(need_retry){
             _next_seqno+=seg.length_in_sequence_space();
-            _outstanding_segs.append(seg.payload());
+            if(seg.header().syn||seg.header().fin){
+                _outstanding_segs.append(Buffer{" "});
+            } else{
+                _outstanding_segs.append(seg.payload());
+            }
+
             _timer.start();
           }
     }
@@ -136,7 +143,9 @@ class TCPSender {
     //!@{
 
     //! \brief absolute seqno for the next byte to be sent
-    uint64_t next_seqno_absolute() const { return _next_seqno; }
+    uint64_t next_seqno_absolute() const {
+        return _next_seqno;
+    }
 
     //! \brief relative seqno for the next byte to be sent
     WrappingInt32 next_seqno() const { return wrap(_next_seqno, _isn); }
