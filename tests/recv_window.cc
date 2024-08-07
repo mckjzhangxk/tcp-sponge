@@ -26,15 +26,15 @@ int main() {
             test.execute(
                 SegmentArrives{}.with_seqno(isn + 1).with_data("abcd").with_result(SegmentArrives::Result::OK));
             test.execute(ExpectAckno{WrappingInt32{isn + 5}});
-            test.execute(ExpectWindow{cap - 4});
+            test.execute(ExpectWindow{cap - 4});//abcd进入bytestream
             test.execute(
                 SegmentArrives{}.with_seqno(isn + 9).with_data("ijkl").with_result(SegmentArrives::Result::OK));
             test.execute(ExpectAckno{WrappingInt32{isn + 5}});
-            test.execute(ExpectWindow{cap - 4});
+            test.execute(ExpectWindow{cap - 4});//只有 abcd进入bytestream，ijkl还没有被组装
             test.execute(
                 SegmentArrives{}.with_seqno(isn + 5).with_data("efgh").with_result(SegmentArrives::Result::OK));
             test.execute(ExpectAckno{WrappingInt32{isn + 13}});
-            test.execute(ExpectWindow{cap - 12});
+            test.execute(ExpectWindow{cap - 12});//abcdefghijkl 都进入了bytestream
         }
 
         {
@@ -49,9 +49,9 @@ int main() {
                 SegmentArrives{}.with_seqno(isn + 1).with_data("abcd").with_result(SegmentArrives::Result::OK));
             test.execute(ExpectAckno{WrappingInt32{isn + 5}});
             test.execute(ExpectWindow{cap - 4});
-            test.execute(ExpectBytes{"abcd"});
+            test.execute(ExpectBytes{"abcd"});//取出bytestream中的 abcd
             test.execute(ExpectAckno{WrappingInt32{isn + 5}});
-            test.execute(ExpectWindow{cap});
+            test.execute(ExpectWindow{cap});//window恢复原来的大小
         }
 
         {
@@ -64,7 +64,7 @@ int main() {
             test.execute(ExpectWindow{cap});
             test.execute(ExpectTotalAssembledBytes{0});
             test.execute(SegmentArrives{}.with_seqno(isn + 3).with_data("cd").with_result(
-                SegmentArrives::Result::OUT_OF_WINDOW));
+                SegmentArrives::Result::OUT_OF_WINDOW));//目前的window [1,2] 
             test.execute(ExpectAckno{WrappingInt32{isn + 1}});
             test.execute(ExpectWindow{cap});
             test.execute(ExpectTotalAssembledBytes{0});
@@ -76,13 +76,13 @@ int main() {
             uint32_t isn = 23452;
             TCPReceiverTestHarness test{cap};
             test.execute(SegmentArrives{}.with_syn().with_seqno(isn).with_result(SegmentArrives::Result::OK));
-            test.execute(SegmentArrives{}.with_seqno(isn + 2).with_data("bc").with_result(SegmentArrives::Result::OK));
+            test.execute(SegmentArrives{}.with_seqno(isn + 2).with_data("bc").with_result(SegmentArrives::Result::OK));//window 是[1,2]，所以只接受了 'b'
             test.execute(ExpectTotalAssembledBytes{0});
-            test.execute(SegmentArrives{}.with_seqno(isn + 1).with_data("a").with_result(SegmentArrives::Result::OK));
+            test.execute(SegmentArrives{}.with_seqno(isn + 1).with_data("a").with_result(SegmentArrives::Result::OK));// [1,2]都接受完成，对应ab,被送入bytestream
             test.execute(ExpectAckno{WrappingInt32{isn + 3}});
-            test.execute(ExpectWindow{0});
+            test.execute(ExpectWindow{0});//window =2 -2(bytestream.buffer_size() )
             test.execute(ExpectTotalAssembledBytes{2});
-            test.execute(ExpectBytes{"ab"});
+            test.execute(ExpectBytes{"ab"});//取出后,bytestream.buffer_size()=0
             test.execute(ExpectWindow{2});
         }
 
@@ -96,7 +96,7 @@ int main() {
             test.execute(ExpectTotalAssembledBytes{2});
             test.execute(ExpectWindow{cap - 2});
             test.execute(SegmentArrives{}.with_data("ab").with_seqno(isn + 1).with_result(
-                SegmentArrives::Result::OUT_OF_WINDOW));
+                SegmentArrives::Result::OUT_OF_WINDOW));//此时window [3,4]
             test.execute(ExpectTotalAssembledBytes{2});
         }
 
@@ -108,8 +108,8 @@ int main() {
             test.execute(SegmentArrives{}.with_syn().with_seqno(isn).with_result(SegmentArrives::Result::OK));
             test.execute(SegmentArrives{}.with_data("ab").with_seqno(isn + 1).with_result(SegmentArrives::Result::OK));
             test.execute(ExpectTotalAssembledBytes{2});
-            test.execute(ExpectWindow{cap - 2});
-            test.execute(SegmentArrives{}.with_data("abc").with_seqno(isn + 1).with_result(SegmentArrives::Result::OK));
+            test.execute(ExpectWindow{cap - 2});//此时window [3,4,5,6],对外显示的容量是cap-2
+            test.execute(SegmentArrives{}.with_data("abc").with_seqno(isn + 1).with_result(SegmentArrives::Result::OK));//接受了c
             test.execute(ExpectTotalAssembledBytes{3});
             test.execute(ExpectWindow{cap - 3});
         }
@@ -119,8 +119,8 @@ int main() {
             size_t cap = 2;
             uint32_t isn = 23452;
             TCPReceiverTestHarness test{cap};
-            test.execute(SegmentArrives{}.with_syn().with_seqno(isn).with_result(SegmentArrives::Result::OK));
-            test.execute(
+            test.execute(SegmentArrives{}.with_syn().with_seqno(isn).with_result(SegmentArrives::Result::OK));//window=[1,2]
+            test.execute(//拒绝 seq=0,窗口之外
                 SegmentArrives{}.with_syn().with_seqno(isn).with_result(SegmentArrives::Result::OUT_OF_WINDOW));
             test.execute(ExpectWindow{cap});
             test.execute(ExpectTotalAssembledBytes{0});
@@ -132,8 +132,8 @@ int main() {
             uint32_t isn = 23452;
             TCPReceiverTestHarness test{cap};
             test.execute(SegmentArrives{}.with_syn().with_seqno(isn).with_result(SegmentArrives::Result::OK));
-            test.execute(SegmentArrives{}.with_fin().with_seqno(isn + 1).with_result(SegmentArrives::Result::OK));
-            test.execute(
+            test.execute(SegmentArrives{}.with_fin().with_seqno(isn + 1).with_result(SegmentArrives::Result::OK));//window=[2,3]
+            test.execute(//fin[1] 在窗口之外
                 SegmentArrives{}.with_fin().with_seqno(isn + 1).with_result(SegmentArrives::Result::OUT_OF_WINDOW));
             test.execute(ExpectWindow{cap});
             test.execute(ExpectTotalAssembledBytes{0});
@@ -144,8 +144,8 @@ int main() {
             size_t cap = 4;
             uint32_t isn = 23452;
             TCPReceiverTestHarness test{cap};
-            test.execute(SegmentArrives{}.with_syn().with_seqno(isn).with_result(SegmentArrives::Result::OK));
-            test.execute(SegmentArrives{}.with_seqno(isn + 1).with_data("ab").with_result(SegmentArrives::Result::OK));
+            test.execute(SegmentArrives{}.with_syn().with_seqno(isn).with_result(SegmentArrives::Result::OK));//window=[1,2,3,4]
+            test.execute(SegmentArrives{}.with_seqno(isn + 1).with_data("ab").with_result(SegmentArrives::Result::OK));//window=[3,4,5,6]
             test.execute(
                 SegmentArrives{}.with_seqno(isn + 3).with_data("cdef").with_result(SegmentArrives::Result::OK));
         }
@@ -155,9 +155,9 @@ int main() {
             size_t cap = 4;
             uint32_t isn = 23452;
             TCPReceiverTestHarness test{cap};
-            test.execute(SegmentArrives{}.with_syn().with_seqno(isn).with_result(SegmentArrives::Result::OK));
-            test.execute(SegmentArrives{}.with_seqno(isn + 1).with_data("ab").with_result(SegmentArrives::Result::OK));
-            test.execute(SegmentArrives{}.with_seqno(isn + 3).with_data("cd").with_result(SegmentArrives::Result::OK));
+            test.execute(SegmentArrives{}.with_syn().with_seqno(isn).with_result(SegmentArrives::Result::OK));//window=[1,2,3,4]
+            test.execute(SegmentArrives{}.with_seqno(isn + 1).with_data("ab").with_result(SegmentArrives::Result::OK));//window=[3,4,5,6]
+            test.execute(SegmentArrives{}.with_seqno(isn + 3).with_data("cd").with_result(SegmentArrives::Result::OK));//window=[5,6,7,8]
         }
 
     } catch (const exception &e) {

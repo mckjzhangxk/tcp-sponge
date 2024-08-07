@@ -33,6 +33,7 @@ class EventLoop {
 
         //! Returns the number of times fd has been read or written, depending on the value of Rule::direction.
         //! \details This function is used internally by EventLoop; you will not need to call it
+        // 统计读/写 bytes数量
         unsigned int service_count() const;
     };
 

@@ -43,8 +43,8 @@ int main() {
             test.execute(ExpectAckno{std::optional<WrappingInt32>{}});
             test.execute(ExpectUnassembledBytes{0});
             test.execute(ExpectTotalAssembledBytes{0});
-            test.execute(SegmentArrives{}.with_seqno(893475).with_result(SegmentArrives::Result::NOT_SYN));
-            test.execute(ExpectAckno{std::optional<WrappingInt32>{}});
+            test.execute(SegmentArrives{}.with_seqno(893475).with_result(SegmentArrives::Result::NOT_SYN));//没有sync，所以
+            test.execute(ExpectAckno{std::optional<WrappingInt32>{}});//，所以没有ackno
             test.execute(ExpectUnassembledBytes{0});
             test.execute(ExpectTotalAssembledBytes{0});
         }
@@ -88,6 +88,8 @@ int main() {
 
         {
             // Window overflow
+            //虽然window大小 超过了tcp window field，但是receiver.window_size()->size_t
+            // 不会有溢出错误
             size_t cap = static_cast<size_t>(UINT16_MAX) + 5;
             TCPReceiverTestHarness test{cap};
             test.execute(ExpectWindow{cap});

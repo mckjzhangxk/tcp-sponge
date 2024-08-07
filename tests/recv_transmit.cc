@@ -73,6 +73,7 @@ int main() {
         }
 
         // Many (arrive/read)s
+        //发生多次，每次发生后再验证发送的数据都被接受
         {
             TCPReceiverTestHarness test{4000};
             uint32_t max_block_size = 10;
@@ -99,6 +100,7 @@ int main() {
         }
 
         // Many arrives, one read
+        //发生多次，最后验证发送的数据都被完整接受
         {
             uint32_t max_block_size = 10;
             uint32_t n_rounds = 100;

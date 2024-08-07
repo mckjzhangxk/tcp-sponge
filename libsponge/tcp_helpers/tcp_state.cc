@@ -1,7 +1,11 @@
 #include "tcp_state.hh"
 
 using namespace std;
-
+//返回receiver的字符串状态
+// error:底层 bytestreqam有error
+// FIN: 收到FIN 数据包
+// LISTEN: 没有ackno（没收到isn）
+// SYN:数据传输开始
 string TCPState::state_summary(const TCPReceiver &receiver) {
     if (receiver.stream_out().error()) {
         return TCPReceiverStateSummary::ERROR;

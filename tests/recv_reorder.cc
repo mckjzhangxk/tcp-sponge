@@ -23,6 +23,7 @@ int main() {
             TCPReceiverTestHarness test{2358};
             test.execute(SegmentArrives{}.with_syn().with_seqno(isn).with_result(SegmentArrives::Result::OK));
             test.execute(ExpectAckno{WrappingInt32{isn + 1}});
+            // abcd放入到了window内，但是没有参与组装
             test.execute(
                 SegmentArrives{}.with_seqno(isn + 10).with_data("abcd").with_result(SegmentArrives::Result::OK));
             test.execute(ExpectAckno{WrappingInt32{isn + 1}});
@@ -45,10 +46,10 @@ int main() {
             test.execute(ExpectTotalAssembledBytes{0});
             test.execute(
                 SegmentArrives{}.with_seqno(isn + 1).with_data("abcd").with_result(SegmentArrives::Result::OK));
-            test.execute(ExpectAckno{WrappingInt32{isn + 9}});
+            test.execute(ExpectAckno{WrappingInt32{isn + 9}});//syn+ abcdefgh
             test.execute(ExpectBytes{"abcdefgh"});
             test.execute(ExpectUnassembledBytes{0});
-            test.execute(ExpectTotalAssembledBytes{8});
+            test.execute(ExpectTotalAssembledBytes{8});//组装了abcdefgh
         }
 
         // An in-window, but later segment, then the hole is filled, bit by bit

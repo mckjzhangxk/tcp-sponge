@@ -23,7 +23,7 @@ unsigned int EventLoop::Rule::service_count() const {
 void EventLoop::add_rule(const FileDescriptor &fd,
                          const Direction direction,
                          const CallbackT &callback,
-                         const InterestT &interest,
+                         const InterestT &interest,//interest()返回true的时候，fd才会被poll?
                          const CallbackT &cancel) {
     _rules.push_back({fd.duplicate(), direction, callback, interest, cancel});
 }
@@ -66,20 +66,20 @@ EventLoop::Result EventLoop::wait_next_event(const int timeout_ms) {
     // set up the pollfd for each rule
     for (auto it = _rules.cbegin(); it != _rules.cend();) {  // NOTE: it gets erased or incremented in loop body
         const auto &this_rule = *it;
-        if (this_rule.direction == Direction::In && this_rule.fd.eof()) {
+        if (this_rule.direction == Direction::In && this_rule.fd.eof()) {//准备从这个fd读取数据，但是fd被close了，移出这个rule
             // no more reading on this rule, it's reached eof
             this_rule.cancel();
             it = _rules.erase(it);
             continue;
         }
 
-        if (this_rule.fd.closed()) {
+        if (this_rule.fd.closed()) {//
             this_rule.cancel();
             it = _rules.erase(it);
             continue;
         }
 
-        if (this_rule.interest()) {
+        if (this_rule.interest()) {//监听集合
             pollfds.push_back({this_rule.fd.fd_num(), static_cast<short>(this_rule.direction), 0});
             something_to_poll = true;
         } else {
@@ -115,7 +115,7 @@ EventLoop::Result EventLoop::wait_next_event(const int timeout_ms) {
         }
 
         const auto &this_rule = *it;
-        const auto poll_ready = static_cast<bool>(this_pollfd.revents & this_pollfd.events);
+        const auto poll_ready = static_cast<bool>(this_pollfd.revents & this_pollfd.events);//是否是监听的事件？
         const auto poll_hup = static_cast<bool>(this_pollfd.revents & POLLHUP);
         if (poll_hup && this_pollfd.events && !poll_ready) {
             // if we asked for the status, and the _only_ condition was a hangup, this FD is defunct:

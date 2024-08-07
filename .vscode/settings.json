@@ -68,6 +68,7 @@
         "random": "cpp",
         "algorithm": "cpp",
         "__tree": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "queue": "cpp"
     }
 }

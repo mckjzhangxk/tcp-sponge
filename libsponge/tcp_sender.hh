@@ -9,6 +9,39 @@
 #include <functional>
 #include <queue>
 
+
+  class Timer{
+    size_t _current_ticks;
+    size_t _rto;
+    uint32_t _muls;
+    bool _running;
+    public:
+    Timer(size_t rto):_current_ticks(0),_rto(rto),_muls(1),_running(false){};
+
+
+    bool expire(size_t ts){
+      if(_running)
+        return (_current_ticks+=ts)>=_rto*_muls;
+      else
+        return false;
+    };
+    void start(){
+      _running=true;
+    }
+    void stop(){
+      _running=false;
+      _current_ticks=0;
+      _muls=1;
+    }
+    
+    uint32_t get_muls()const{
+       return _muls;
+    }
+    void double_mul(){
+      _muls*=2;
+    }
+  };
+
 //! \brief The "sender" part of a TCP implementation.
 
 //! Accepts a ByteStream, divides it up into segments and sends the
@@ -29,8 +62,29 @@ class TCPSender {
     //! outgoing stream of bytes that have not yet been sent
     ByteStream _stream;
 
+
+    std::optional<uint64_t> _ackno;
+    bool _fin_send;
+    uint64_t _sws;//send window size
+
+    std::deque<char>  _window_data;
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
+    
+
+    Timer _timer;
+
+    BufferList _outstanding_segs;
+
+
+    void _transmit(TCPSegment & seg,bool need_retry=true){
+          _segments_out.push(seg);
+          if(need_retry){
+            _next_seqno+=seg.length_in_sequence_space();
+            _outstanding_segs.append(seg.payload());
+            _timer.start();
+          }
+    }
 
   public:
     //! Initialize a TCPSender

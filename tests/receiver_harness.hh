@@ -14,7 +14,7 @@
 #include <sstream>
 #include <string>
 
-struct ReceiverTestStep {
+struct ReceiverTestStep {//所有关于TCPReceiver测试的步骤
     virtual std::string to_string() const { return "ReceiverTestStep"; }
     virtual void execute(TCPReceiver &) const {}
     virtual ~ReceiverTestStep() {}
@@ -32,6 +32,7 @@ struct ReceiverExpectation : public ReceiverTestStep {
     virtual ~ReceiverExpectation() {}
 };
 
+//测试TCPReceiver 是指定状态的用例
 struct ExpectState : public ReceiverExpectation {
     std::string _state;
 
@@ -44,7 +45,7 @@ struct ExpectState : public ReceiverExpectation {
         }
     }
 };
-
+//检查receiver此时的ackno是不是设置的ackno
 struct ExpectAckno : public ReceiverExpectation {
     std::optional<WrappingInt32> _ackno;
 
@@ -83,7 +84,7 @@ struct ExpectWindow : public ReceiverExpectation {
         }
     }
 };
-
+//期望没有组装的字节数量是n_bytes
 struct ExpectUnassembledBytes : public ReceiverExpectation {
     size_t _n_bytes;
 
@@ -115,7 +116,7 @@ struct ExpectTotalAssembledBytes : public ReceiverExpectation {
         }
     }
 };
-
+//期望此时写入bytestream的byte 与给定的字节一致
 struct ExpectBytes : public ReceiverExpectation {
     std::string _bytes;
 
@@ -149,7 +150,8 @@ struct ReceiverAction : public ReceiverTestStep {
     virtual void execute(TCPReceiver &) const {}
     virtual ~ReceiverAction() {}
 };
-
+//设置了TCPSegment的属性之后，执行receiver.recvSeg，返回的结果
+// 是否和设置的result匹配
 struct SegmentArrives : public ReceiverAction {
     enum class Result { NOT_SYN, OUT_OF_WINDOW, OK };
 
@@ -221,6 +223,7 @@ struct SegmentArrives : public ReceiverAction {
         return *this;
     }
 
+    //根据SegmentArrives的属性，创建一个TCPSement
     TCPSegment build_segment() const {
         TCPSegment seg;
         seg.payload() = std::string(data);
@@ -274,8 +277,8 @@ struct SegmentArrives : public ReceiverAction {
 };
 
 class TCPReceiverTestHarness {
-    TCPReceiver receiver;
-    std::vector<std::string> steps_executed;
+    TCPReceiver receiver;//要被测试对象
+    std::vector<std::string> steps_executed;//保存所有的执行的信息
 
   public:
     TCPReceiverTestHarness(size_t capacity) : receiver(capacity), steps_executed() {
