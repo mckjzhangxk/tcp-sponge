@@ -66,7 +66,7 @@ class TCPSender {
     ByteStream _stream;
 
 
-    uint64_t _sws;//send window size
+    int _sws;//send window size
 
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno;

@@ -38,15 +38,15 @@ size_t TCPSender::bytes_in_flight() const {
  }
 
 void TCPSender::fill_window() {
-
-    size_t remain=_sws-bytes_in_flight();
+    int sws=_sws?_sws:1;
+    int remain=sws-bytes_in_flight();
 
     while (remain>0&&!_fin_send)
     {
         TCPSegment seg;
         seg.header().seqno=wrap(_next_seqno,_isn);
 
-        int n=min(remain-!_syn_send,TCPConfig::MAX_PAYLOAD_SIZE);
+        int n=min((size_t)remain-!_syn_send,TCPConfig::MAX_PAYLOAD_SIZE);
         
         if(!_syn_send){
             _syn_send= true;
@@ -113,23 +113,25 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     if(_timer.expire(ms_since_last_tick)){
         _timer.reset();
         _timer.double_mul();
-
-        TCPSegment seg;
-        seg.header().seqno=wrap(_ackno,_isn);
-       
-        auto& payload=_outstanding_segs.size()>0?_outstanding_segs.buffers().front():Buffer();
-        seg.payload()=payload;
-
-        if(_ackno==0){
-            seg.header().syn=true;        
-        }
-
-	    if(_fin_send&&( _ackno+seg.length_in_sequence_space()==(_next_seqno-1) )){// _next_seqno-1是FIN的索引(当_fin_send=true时)
-            seg.header().fin=true;
-        }
         
+        if(_sws>0){
+                TCPSegment seg;
+                seg.header().seqno=wrap(_ackno,_isn);
+            
+                auto& payload=_outstanding_segs.size()>0?_outstanding_segs.buffers().front():Buffer();
+                seg.payload()=payload;
+                    
+                
+                if(_ackno==0){
+                    seg.header().syn=true;        
+                }
 
-        _transmit(seg,false);
+                if(_fin_send&&( _ackno+seg.length_in_sequence_space()==(_next_seqno-1) )){// _next_seqno-1是FIN的索引(当_fin_send=true时)
+                    seg.header().fin=true;
+                }            
+                 _transmit(seg,false);
+        }
+           
         _timer.start();
     }
  }
