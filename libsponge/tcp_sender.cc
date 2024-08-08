@@ -39,16 +39,6 @@ size_t TCPSender::bytes_in_flight() const {
 
 void TCPSender::fill_window() {
 
-
-    if(!_syn_send){
-        _syn_send= true;
-        TCPSegment seg;
-        seg.header().syn=true;
-        seg.header().seqno=wrap(0,_isn);
-        _transmit(seg);
-        return ;
-    }
-
     size_t remain=_sws-bytes_in_flight();
 
     while (remain>0&&!_fin_send)
@@ -56,12 +46,17 @@ void TCPSender::fill_window() {
         TCPSegment seg;
         seg.header().seqno=wrap(_next_seqno,_isn);
 
-        int n=min(remain,TCPConfig::MAX_PAYLOAD_SIZE);
+        int n=min(remain-!_syn_send,TCPConfig::MAX_PAYLOAD_SIZE);
+        
+        if(!_syn_send){
+            _syn_send= true;
+            seg.header().syn=true;
+        }
         
         std::string sendData=_stream.read(n);
         seg.payload()=Buffer(std::move(sendData));
 
-        if (remain>seg.payload().size()&&_stream.eof()){
+        if (remain>seg.length_in_sequence_space()&&_stream.eof()){
             _fin_send=true;
             seg.header().fin=true;
         }
@@ -80,12 +75,15 @@ void TCPSender::fill_window() {
 bool TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
     
     uint64_t old_ackno=_ackno;
+    uint16_t old_win=_sws;
     uint64_t new_ackno= unwrap(ackno,_isn,_next_seqno);
     
-    if(new_ackno<=old_ackno){
-	 if(new_ackno==old_ackno)
-	    _sws=window_size;
-	 return true;
+    if(new_ackno<old_ackno){
+        return true;        
+    }else if(new_ackno==old_ackno){
+         _sws=window_size;
+          if(_sws<=old_win)
+	        return true;
     }
     
     if(new_ackno>_next_seqno)
@@ -95,9 +93,16 @@ bool TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     _sws=window_size;
     
     uint64_t num_of_ack=new_ackno-old_ackno;
-    _outstanding_segs.remove_prefix(num_of_ack);
-
-    _timer.stop();
+    if(num_of_ack>0){
+        _timer.stop();
+        if(old_ackno==0){
+            num_of_ack--;
+        } 
+        if(_fin_send&& (new_ackno==_next_seqno) ){
+            num_of_ack--;
+        }
+        _outstanding_segs.remove_prefix(num_of_ack);
+    }
 
     fill_window();
     return true;
@@ -111,15 +116,18 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
 
         TCPSegment seg;
         seg.header().seqno=wrap(_ackno,_isn);
-        auto& payload=_outstanding_segs.buffers().front();
+       
+        auto& payload=_outstanding_segs.size()>0?_outstanding_segs.buffers().front():Buffer();
+        seg.payload()=payload;
 
-        if(_ackno==0)
-            seg.header().syn=true;
-	else if(_fin_send&&(_ackno+1==_next_seqno)){
-            seg.header().fin=true;
-        }else{
-            seg.payload()=payload;
+        if(_ackno==0){
+            seg.header().syn=true;        
         }
+
+	    if(_fin_send&&( _ackno+seg.length_in_sequence_space()==(_next_seqno-1) )){// _next_seqno-1是FIN的索引(当_fin_send=true时)
+            seg.header().fin=true;
+        }
+        
 
         _transmit(seg,false);
         _timer.start();

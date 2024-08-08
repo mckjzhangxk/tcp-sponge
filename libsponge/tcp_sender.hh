@@ -85,9 +85,7 @@ class TCPSender {
           _segments_out.push(seg);
           if(need_retry){
             _next_seqno+=seg.length_in_sequence_space();
-            if(seg.header().syn||seg.header().fin){
-                _outstanding_segs.append(Buffer{" "});
-            } else{
+            if(seg.payload().size()>0){
                 _outstanding_segs.append(seg.payload());
             }
 
