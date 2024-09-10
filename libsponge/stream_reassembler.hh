@@ -22,7 +22,6 @@ class StreamReassembler {
     size_t _capacity;    //!< The maximum number of bytes
 
 
-
     uint64_t _accept_index;//下一个可以被写入ByteStream的 【全局索引】
     uint64_t _eof_index;
 
@@ -38,6 +37,14 @@ class StreamReassembler {
     //! \note This capacity limits both the bytes that have been reassembled,
     //! and those that have not yet been reassembled.
     StreamReassembler(const size_t capacity);
+
+    //实现的方法是： 
+    // 1.维护一个 【起始索引有序，不连续的,最小字节索引>=_accept_index】的 _blocks。
+    // 2. 调用 _push(data,index),把数据先 尝试加入到 _blocks， _blocks位置 （1）描述的3个属性。
+    // 3.  调用一次 _pop()，取出数据(有可能是空)， 写入到 ByteStream _output中，
+    // 4. 更新 _accept_index
+    // 5.如果3中 写入的数据没有全部写入成功，剩余的数据调用_push,存储到 _blocks中
+
 
     //! \brief Receives a substring and writes any newly contiguous bytes into the stream.
     //!
@@ -63,6 +70,7 @@ class StreamReassembler {
     //! should only be counted once for the purpose of this function.
     size_t unassembled_bytes() const;
 
+    //是否 所有byte都被写入到了_output?
     //! \brief Is the internal state empty (other than the output stream)?
     //! \returns `true` if no substrings are waiting to be assembled
     bool empty() const;

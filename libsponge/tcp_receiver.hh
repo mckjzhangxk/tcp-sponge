@@ -55,7 +55,11 @@ class TCPReceiver {
 
     //! \brief number of bytes stored but not yet reassembled
     size_t unassembled_bytes() const { return _reassembler.unassembled_bytes(); }
-
+    
+    //接收一个TCP Segment
+    // 1.最终 调用 _reassembler.push_string(seg.payload(),streamIndex,seg.hdr().fin)
+    // 2.对于syn的 segment,更新 内部的isn,  用于ackno()方法的计算
+    // 3.返回 是否有数据被接收
     //! \brief handle an inbound segment
     //! \returns `true` if any part of the segment was inside the window
     bool segment_received(const TCPSegment &seg);

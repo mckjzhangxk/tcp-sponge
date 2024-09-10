@@ -16,10 +16,9 @@ bool TCPReceiver::contain(uint16_t xlow,uint16_t xhigh,uint16_t ylow,uint16_t yh
 bool TCPReceiver::segment_received(const TCPSegment &seg) {
     const TCPHeader& hdr=seg.header();
 
-
-    uint16_t start_window_index=0;
+    //窗口区 所对应的 【绝对索引】
     // payload_size + SYN(1) + FIN(1)
-    start_window_index=_reassembler.stream_out().bytes_written()+_isn.has_value()+_reassembler.stream_out().input_ended();
+    uint16_t start_window_index=_reassembler.stream_out().bytes_written()+_isn.has_value()+_reassembler.stream_out().input_ended();
 
     uint16_t end_windex_index=start_window_index+window_size();
     if (start_window_index==end_windex_index)
@@ -33,6 +32,7 @@ bool TCPReceiver::segment_received(const TCPSegment &seg) {
     if(!_isn.has_value())
         return false;
 
+    //数据payload 所对应的 【绝对索引】
     uint64_t start_abs_index=unwrap(hdr.seqno, *_isn, start_window_index);
     uint16_t end_abs_index=start_abs_index+seg.length_in_sequence_space();
     if (start_abs_index==end_abs_index)

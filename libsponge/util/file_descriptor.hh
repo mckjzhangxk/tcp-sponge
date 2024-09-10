@@ -13,6 +13,7 @@ class FileDescriptor {
     //! \brief A handle on a kernel file descriptor.
     //! \details FileDescriptor objects contain a std::shared_ptr to a FDWrapper.
     class FDWrapper {
+      //文件描述符fd的包装类，不可被老被，具有close 方法
       public:
         int _fd;                    //!< The file descriptor number returned by the kernel
         bool _eof = false;          //!< Flag indicating whether FDWrapper::_fd is at EOF
@@ -30,6 +31,7 @@ class FileDescriptor {
         //! \name
         //! An FDWrapper cannot be copied or moved
 
+        //FDWrapper没有拷贝构造器和赋值
         //!@{
         FDWrapper(const FDWrapper &other) = delete;
         FDWrapper &operator=(const FDWrapper &other) = delete;
@@ -57,7 +59,8 @@ class FileDescriptor {
 
     //! Read up to `limit` bytes
     std::string read(const size_t limit = std::numeric_limits<size_t>::max());
-
+    //通过 _internal_fd，读取数据到 str,如果读取0个字节， 设置_internal_fd->_eof = true;
+    // 并且更新读取次数
     //! Read up to `limit` bytes into `str` (caller can allocate storage)
     void read(std::string &str, const size_t limit = std::numeric_limits<size_t>::max());
 
@@ -67,15 +70,21 @@ class FileDescriptor {
     //! Write a string, possibly blocking until all is written
     size_t write(const std::string &str, const bool write_all = true) { return write(BufferViewList(str), write_all); }
 
+    //把buffer中不连续地址的数据 按照顺序写出到 _internal_fd，
+    // write_all = true会把buffer 全部写完，如果中间有错误会抛出异常
+    // 返回写出的字节数量
     //! Write a buffer (or list of buffers), possibly blocking until all is written
     size_t write(BufferViewList buffer, const bool write_all = true);
 
+    //让内部的描述符关闭
     //! Close the underlying file descriptor
     void close() { _internal_fd->close(); }
 
+    //通过本方法，派生出一个FileDescriptor，底层的FDWrapper 的引用次数+1
     //! Copy a FileDescriptor explicitly, increasing the FDWrapper refcount
     FileDescriptor duplicate() const;
 
+    //底层描述符 阻塞/非阻塞设置
     //! Set blocking(true) or non-blocking(false)
     void set_blocking(const bool blocking_state);
 
@@ -88,6 +97,7 @@ class FileDescriptor {
     unsigned int write_count() const { return _internal_fd->_write_count; }  //!< \brief number of writes
     //!@}
 
+    //FileDescriptor 不支持拷贝构造和赋值
     //! \name Copy/move constructor/assignment operators
     //! FileDescriptor can be moved, but cannot be copied (but see duplicate())
     //!@{

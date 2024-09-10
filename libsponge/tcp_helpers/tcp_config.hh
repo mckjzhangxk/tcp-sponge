@@ -22,4 +22,14 @@ class TCPConfig {
     std::optional<WrappingInt32> fixed_isn{};
 };
 
+//! Config for classes derived from FdAdapter
+class FdAdapterConfig {
+  public:
+    Address source{"0", 0};       //!< Source address and port
+    Address destination{"0", 0};  //!< Destination address and port
+
+    uint16_t loss_rate_dn = 0;  //!< Downlink loss rate (for LossyFdAdapter),越大越容易丢包
+    uint16_t loss_rate_up = 0;  //!< Uplink loss rate (for LossyFdAdapter)越大越容易丢包
+};
+
 #endif  // SPONGE_LIBSPONGE_TCP_CONFIG_HH

@@ -38,7 +38,7 @@ struct TCPHeader {
     uint16_t dport = 0;         //!< destination port
     WrappingInt32 seqno{0};     //!< sequence number
     WrappingInt32 ackno{0};     //!< ack number
-    uint8_t doff = LENGTH / 4;  //!< data offset
+    uint8_t doff = LENGTH / 4;  //!< data offset，数据的偏移（索引）
     bool urg = false;           //!< urgent flag
     bool ack = false;           //!< ack flag
     bool psh = false;           //!< push flag

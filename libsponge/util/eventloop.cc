@@ -59,10 +59,16 @@ void EventLoop::add_rule(const FileDescriptor &fd,
 //! will result in a busy loop (poll returns on a ready file descriptor; file descriptor is not read or
 //! written, so it is still ready; the next call to poll will immediately return).
 EventLoop::Result EventLoop::wait_next_event(const int timeout_ms) {
+
+    // struct pollfd {
+    // 	int     fd;
+    // 	short   events;  // IN,OUT
+    // 	short   revents; //事件是否被触发
+    // };
     vector<pollfd> pollfds{};
     pollfds.reserve(_rules.size());
     bool something_to_poll = false;
-
+    //过滤规则，找到 可以被poll的 fd加绒的 pollfds
     // set up the pollfd for each rule
     for (auto it = _rules.cbegin(); it != _rules.cend();) {  // NOTE: it gets erased or incremented in loop body
         const auto &this_rule = *it;
@@ -92,7 +98,7 @@ EventLoop::Result EventLoop::wait_next_event(const int timeout_ms) {
     if (not something_to_poll) {
         return Result::Exit;
     }
-
+    //系统调用poll,超时时间的timeout_ms,如果timeout_ms没有 pollfds的事件被触发，返回TIMEOUT，如果出错，返回EXIT
     // call poll -- wait until one of the fds satisfies one of the rules (writeable/readable)
     try {
         if (0 == SystemCall("poll", ::poll(pollfds.data(), pollfds.size(), timeout_ms))) {
@@ -117,7 +123,10 @@ EventLoop::Result EventLoop::wait_next_event(const int timeout_ms) {
         const auto &this_rule = *it;
         const auto poll_ready = static_cast<bool>(this_pollfd.revents & this_pollfd.events);//是否是监听的事件？
         const auto poll_hup = static_cast<bool>(this_pollfd.revents & POLLHUP);
-        if (poll_hup && this_pollfd.events && !poll_ready) {
+        if (poll_hup && this_pollfd.events && !poll_ready) {//设置的监听事件，事件没发生但发生了hup
+            //hup意味着fd defunct（失效）
+            // 如果 event=IN,fd是输入队列的关闭的
+            // 如果 event=OUT,fd是输出队列的关闭的
             // if we asked for the status, and the _only_ condition was a hangup, this FD is defunct:
             //   - if it was POLLIN and nothing is readable, no more will ever be readable
             //   - if it was POLLOUT, it will not be writable again
@@ -126,7 +135,7 @@ EventLoop::Result EventLoop::wait_next_event(const int timeout_ms) {
             continue;
         }
 
-        if (poll_ready) {
+        if (poll_ready) {//事件触发，调用对应的callback()
             // we only want to call callback if revents includes the event we asked for
             const auto count_before = this_rule.service_count();
             this_rule.callback();

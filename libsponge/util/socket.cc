@@ -102,6 +102,7 @@ void UDPSocket::recv(received_datagram &datagram, const size_t mtu) {
     }
 
     register_read();
+    //Address 支持赋值，所以可以这么写
     datagram.source_address = {datagram_source_address, fromlen};
     datagram.payload.resize(recv_len);
 }
@@ -112,16 +113,20 @@ UDPSocket::received_datagram UDPSocket::recv(const size_t mtu) {
     return ret;
 }
 
+//把payload -> destination_address
+// 如果发送的字节不等于payload.size()，抛出异常
 void sendmsg_helper(const int fd_num,
                     const sockaddr *destination_address,
                     const socklen_t destination_address_len,
                     const BufferViewList &payload) {
+    //iovecs是一个数组，每一个数组有一段数据
     auto iovecs = payload.as_iovecs();
 
+    //要发送的消息，写好好地址和发生的payload
     msghdr message{};
     message.msg_name = const_cast<sockaddr *>(destination_address);
     message.msg_namelen = destination_address_len;
-    message.msg_iov = iovecs.data();
+    message.msg_iov = iovecs.data();//payload
     message.msg_iovlen = iovecs.size();
 
     const ssize_t bytes_sent = SystemCall("sendmsg", ::sendmsg(fd_num, &message, 0));

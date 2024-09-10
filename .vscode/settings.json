@@ -69,6 +69,7 @@
         "algorithm": "cpp",
         "__tree": "cpp",
         "set": "cpp",
-        "queue": "cpp"
+        "queue": "cpp",
+        "thread": "cpp"
     }
 }

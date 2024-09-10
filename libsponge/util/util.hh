@@ -59,7 +59,10 @@ class InternetChecksum {
 
   public:
     InternetChecksum(const uint32_t initial_sum = 0);
+    //计算出data的sum,保存在_sum的成员变量中
     void add(std::string_view data);
+    // 1.如果数据data中设置了chksum,value返回0，表示chksum正确，否则表示chksum不正确
+    // 2.如果数据data中没设置了chksum(=0), 返回的value()就是chksum
     uint16_t value() const;
 };
 

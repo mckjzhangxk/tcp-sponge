@@ -24,7 +24,7 @@ class Address {
   private:
     socklen_t _size;  //!< Size of the wrapped address.
     Raw _address{};   //!< A wrapped [sockaddr_storage](@ref man7::socket) containing the address.
-
+    //根据 node,service,hints获得 sock_addr,然后 转换成 Raw
     //! Constructor from ip/host, service/port, and hints to the resolver.
     Address(const std::string &node, const std::string &service, const addrinfo &hints);
 
@@ -34,11 +34,13 @@ class Address {
 
     //! Construct from dotted-quad string ("18.243.0.1") and numeric port.
     Address(const std::string &ip, const std::uint16_t port);
-
+    
+    //sockaddr到  Address地址的转换
     //! Construct from a [sockaddr *](@ref man7::socket).
     Address(const sockaddr *addr, const std::size_t size);
 
     //! Equality comparison.
+    //直接对比内部对象_address是否字节相等
     bool operator==(const Address &other) const;
     bool operator!=(const Address &other) const { return not operator==(other); }
 
@@ -62,6 +64,8 @@ class Address {
 
     //! Size of the underlying address storage.
     socklen_t size() const { return _size; }
+
+    //转换成 sockaddr
     //! Const pointer to the underlying socket address storage.
     operator const sockaddr *() const { return _address; }
     //!@}

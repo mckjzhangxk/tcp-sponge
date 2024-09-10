@@ -23,6 +23,7 @@ void NetParser::_check_size(const size_t size) {
     }
 }
 
+//从_buffer中提取不同类型的整数
 template <typename T>
 T NetParser::_parse_int() {
     constexpr size_t len = sizeof(T);
@@ -42,6 +43,7 @@ T NetParser::_parse_int() {
     return ret;
 }
 
+
 void NetParser::remove_prefix(const size_t n) {
     _check_size(n);
     if (error()) {
@@ -59,12 +61,13 @@ void NetUnparser::_unparse_int(string &s, T val) {
     }
 }
 
+//从Buffer中 取出u32,并移除u32
 uint32_t NetParser::u32() { return _parse_int<uint32_t>(); }
-
+//从Buffer中 取出u32,并移除u16
 uint16_t NetParser::u16() { return _parse_int<uint16_t>(); }
-
+//从Buffer中 取出u32,并移除u8
 uint8_t NetParser::u8() { return _parse_int<uint8_t>(); }
-
+//把val[3],val[2],val[1],val[0] 追加到
 void NetUnparser::u32(string &s, const uint32_t val) { return _unparse_int<uint32_t>(s, val); }
 
 void NetUnparser::u16(string &s, const uint16_t val) { return _unparse_int<uint16_t>(s, val); }

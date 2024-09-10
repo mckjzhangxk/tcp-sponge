@@ -11,11 +11,11 @@
 //! The result of parsing or unparsing an IP datagram or TCP segment
 enum class ParseResult {
     NoError = 0,      //!< Success
-    BadChecksum,      //!< Bad checksum
-    PacketTooShort,   //!< Not enough data to finish parsing
-    WrongIPVersion,   //!< Got a version of IP other than 4
-    HeaderTooShort,   //!< Header length is shorter than minimum required
-    TruncatedPacket,  //!< Packet length is shorter than header claims
+    BadChecksum,      //!< Bad checksum，错误的校验和
+    PacketTooShort,   //!< Not enough data to finish parsing,  s,收到的buffer size < Ip header的20个字节
+    WrongIPVersion,   //!< Got a version of IP other than 4,IPV4版本错误
+    HeaderTooShort,   //!< Header length is shorter than minimum required,IP头部不足20字节
+    TruncatedPacket,  //!< Packet length is shorter than header claims,收到的buffer size < Ip数据包总长度 
 };
 
 //! Output a string representation of a ParseResult
@@ -27,6 +27,7 @@ class NetParser {
     ParseResult _error = ParseResult::NoError;  //!< Result of parsing so far
 
     //! Check that there is sufficient data to parse the next token
+    //检查size是否大于_buffer的长度，如果是，设置set_error
     void _check_size(const size_t size);
 
     //! Generic integer parsing method (used by u32, u16, u8)
@@ -35,6 +36,7 @@ class NetParser {
     T _parse_int();
 
   public:
+    //通过buffer,构建解析器
     NetParser(Buffer buffer) : _buffer(buffer) {}
 
     Buffer buffer() const { return _buffer; }
@@ -46,18 +48,21 @@ class NetParser {
     //! \param[in] res is the value to store in BaseParser::_error
     void set_error(ParseResult res) { _error = res; }
 
+    //是否有错误
     //! Returns `true` if there has been an error
     bool error() const { return get_error() != ParseResult::NoError; }
 
+    ////从_buffer中 取出u32,并移除这4个字节
     //! Parse a 32-bit integer in network byte order from the data stream
     uint32_t u32();
 
+    ///从_buffer中 取出u16,并移除这2个字节
     //! Parse a 16-bit integer in network byte order from the data stream
     uint16_t u16();
-
+    ///从_buffer中 取出u8,并移除这1个字节
     //! Parse an 8-bit integer in network byte order from the data stream
     uint8_t u8();
-
+    ///从_buffer中移除这n个字节
     //! Remove n bytes from the buffer
     void remove_prefix(const size_t n);
 };

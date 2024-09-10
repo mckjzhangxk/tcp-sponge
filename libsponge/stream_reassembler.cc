@@ -27,29 +27,40 @@ StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity),
 // A. ByteStream 容量满了(index==_accept_index)
 // B. index与 ByteStream 中的seq不连续(index>_accept_index)
 // 所以 本方法是把这些 无法进入ByteStream 缓存到 StreamReassembler中
-void StreamReassembler::_push(const string &data, const uint64_t start_index){
+void StreamReassembler::_push(const string &data, uint64_t start_index){
         if(data.size()==0)
             return;
-        if(start_index<_accept_index)//已经在ByteStream中，不需要放在reassembler中了
-            return;
+        char * _data_pointer=(char*)data.data();
+        size_t data_sz=data.size();
+
+        if(start_index<_accept_index){
+            if (_accept_index>=start_index+data_sz)//表示全部被接收完成，无需放在reassembler中了
+            {
+                return;
+            }
+            _data_pointer+=(_accept_index-start_index);
+            data_sz-=(_accept_index-start_index);
+            start_index=_accept_index;
+
+        }
         uint64_t capacity_end_index=_accept_index+_capacity;
 
         if (start_index>=capacity_end_index){//reassembler 容量不足，无法放置多余字节
             return;
         }
         
-        uint64_t end_index=  min(start_index+data.size(),capacity_end_index);
+        uint64_t end_index=  min(start_index+data_sz,capacity_end_index);
         
         
         
-        std::string_view dv={data.data(),end_index-start_index};//存放的数据
+        std::string_view dv={_data_pointer,end_index-start_index};//存放的数据
 
         std::list<Block>::iterator it ;
 
         // x=<start_index,end_index,dv> 是本次需要缓存的内容
 
         // 本次循环的目的是找到一个"可以合并"的单元it，把 x合并到it中
-        // "可以合并"是指 index 在 [it.start_index,it.end_index]区间范围内
+        // "可以合并"是指 start_index 在 [it.start_index,it.end_index]区间范围内
         //  合并过程： 1. dv[it.end_index-index] 追加到 it.data后
         //           2.  it.end_index=end_index
 
@@ -57,6 +68,8 @@ void StreamReassembler::_push(const string &data, const uint64_t start_index){
         //1.index 小于 _block中 【最小 起始索引】,此时x转换成一个BLOCK，插入到 _block的最前头
         //2. index 大于  _block中【最大 终止索引】，插入到 _block的最后头
 
+        //A._block是一个 有序，不连续的 "块组",下面的 for,位置有序的 特点，
+        // 临时破坏 块直接的 "不连续" 
         for (it = _blocks.begin(); it != _blocks.end(); ++it) {
             if(  it->start_index<=start_index ){
 
@@ -84,7 +97,7 @@ void StreamReassembler::_push(const string &data, const uint64_t start_index){
             
         }
         
-
+        //B.同和把front与后面的it 进行合并，重新恢复不连续的特性
         if (it!=_blocks.end())//此时，it.startindex<(it+1).start,但是it.endindex可能 大于(it+1).start
         {
             //经过之前的匹配，it是经过<start_index,end_index,dv>合并后的元素
@@ -106,7 +119,7 @@ void StreamReassembler::_push(const string &data, const uint64_t start_index){
                      _block_sz-=(front->data.size()+it->data.size());
                     uint64_t subIndex=front->end_index-it->start_index;
 
-                    if(subIndex<it->data.size()){
+                    if(subIndex<it->data.size()){//必须的判断，有可能front的数据 完全覆盖it的数据，不需要做多余的合并
                         front->data.append(it->data.substr(subIndex));
                         front->end_index=it->end_index;
                     }
@@ -145,11 +158,8 @@ std::optional<StreamReassembler::Block> StreamReassembler::_pop(){
         _blocks.pop_front();
         _block_sz-=r->data.size();
 
-
                             
-        // b.start_index=_accept_index;
-        
-        if(b.end_index>_eof_index){
+        if(b.end_index>_eof_index){// 之前加入的block中的字节如果索引 大于_eof_index??
             r->end_index=_eof_index;
             r->data=r->data.substr(0,_eof_index-_accept_index);
         }
@@ -186,22 +196,11 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
         _eof_index=index+data.size();
     }
 
-    if (data.size()==0)
-    {
-        if (_accept_bytes())
-            return;
+    if (data.size()==0&&_accept_bytes()){
+        return;
     }
 
-    if (index<_accept_index){
-        uint64_t end_index=index+data.size();
-        if (end_index<=_accept_index)
-            return;
-        _push(data.substr(_accept_index-index),_accept_index);
-
-    } else{
-        _push(data,index);
-    }
-
+     _push(data,index);
     auto r=_pop();
     if(r.has_value()){
         size_t n=_output.write(r->data);
@@ -212,23 +211,7 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
         }
     }    
 }  
-    
-    
-        //走到这里说明 本次pushstring(data,index),data已经全部都写入到ByteStream中的
-        // 1.data已经全部都写入到ByteStream中的， ByteStream没有满
-        // 2. _accept_index 由于这次write 而被更新
-
-        // 所以我应该从_block中哪些满足写入 ByteStream中的block 取出后写入到 ByteStream
-        // 【满足】的意思是 it.start_index<=accept_index
-       
-
         
-       
-
-    
-        
-  
-    
 
 size_t StreamReassembler::unassembled_bytes() const { 
     return _block_sz; 

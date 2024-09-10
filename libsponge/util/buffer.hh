@@ -20,6 +20,7 @@ class Buffer {
     Buffer() = default;
 
     //! \brief Construct by taking ownership of a string
+    // Buffer通过对底层 str进行引用计数，实现 轻量化的操作 底层的str
     Buffer(std::string &&str) noexcept : _storage(std::make_shared<std::string>(std::move(str))) {}
 
     //! \name Expose contents as a std::string_view
@@ -35,12 +36,15 @@ class Buffer {
     operator std::string_view() const { return str(); }
     //!@}
 
+     //返回Buffer[n]
     //! \brief Get character at location `n`
     uint8_t at(const size_t n) const { return str().at(n); }
 
+    //Buffer的大小
     //! \brief Size of the string
     size_t size() const { return str().size(); }
 
+    //拷贝出一个新的string
     //! \brief Make a copy to a new std::string
     std::string copy() const { return std::string(str()); }
 
@@ -132,6 +136,9 @@ class BufferViewList {
     // _views中 字节的总数
     size_t size() const;
 
+    //iovec是一个数组，由起始地址p和长度sz组成
+    //本方法把BufferViewList 穿换成 iovec 数组
+    // iovec 数组 可用于 高效处理不连续的数据 
     //! \brief Convert to a vector of `iovec` structures
     //! \note used for system calls that write discontiguous buffers,
     //! e.g. [writev(2)](\ref man2::writev) and [sendmsg(2)](\ref man2::sendmsg)

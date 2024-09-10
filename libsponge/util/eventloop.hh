@@ -27,9 +27,9 @@ class EventLoop {
       public:
         FileDescriptor fd;    //!< FileDescriptor to monitor for activity.
         Direction direction;  //!< Direction::In for reading from fd, Direction::Out for writing to fd.
-        CallbackT callback;   //!< A callback that reads or writes fd.
-        InterestT interest;   //!< A callback that returns `true` whenever fd should be polled.
-        CallbackT cancel;     //!< A callback that is called when the rule is cancelled (e.g. on hangup)
+        CallbackT callback;   //!< A callback that reads or writes fd.如果fd上触发direction事件，调用callback
+        InterestT interest;   //!< A callback that returns `true` whenever fd should be polled.表示是否可以被poll
+        CallbackT cancel;     //!< A callback that is called when the rule is cancelled (e.g. on hangup)，当fd hungup,本规则被取消被调用，并且本办法
 
         //! Returns the number of times fd has been read or written, depending on the value of Rule::direction.
         //! \details This function is used internally by EventLoop; you will not need to call it
@@ -46,14 +46,19 @@ class EventLoop {
         Timeout,  //!< No rules were triggered before timeout.
         Exit  //!< All rules have been canceled or were uninterested; make no further calls to EventLoop::wait_next_event.
     };
-
+    //把规则添加到_rules中
     //! Add a rule whose callback will be called when `fd` is ready in the specified Direction.
     void add_rule(const FileDescriptor &fd,
                   const Direction direction,
                   const CallbackT &callback,
                   const InterestT &interest = [] { return true; },
                   const CallbackT &cancel = [] {});
-
+    //1.根据_rules，筛选(_rules[i]->interest()->true)出需要 被poll的 全部fds
+    // 2.调用epoll(fds,timeout),如果超时，返回TIMEOUT,失败返回EXIT
+    // 3.遍历每个fds
+    //   A.,事件被触发:调用对应rule[i].callback()
+    //   B. fd是hup:调用对应rule[i].cancle(),并异常规律
+    //   C. fd发生错误，抛出异常
     //! Calls [poll(2)](\ref man2::poll) and then executes callback for each ready fd.
     Result wait_next_event(const int timeout_ms);
 };

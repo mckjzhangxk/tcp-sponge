@@ -14,11 +14,12 @@ class TCPSegment {
 
   public:
     //! \brief Parse the segment from a string
-    // 把buffer 的内容解析到 TCPHeader和payload中
+    // 把buffer 的内容解析到 TCPHeader和payload中,并且做了checksum的校验
     ParseResult parse(const Buffer buffer, const uint32_t datagram_layer_checksum = 0);
 
     //! \brief Serialize the segment to a string
     // TCP Header,TCP Payload 成为BufferList的2个成员
+    // TCP Header的checksum 是 TCP Hdr,TCP Payload,  上层的pseudo-checksum 三者 只和 取反
     BufferList serialize(const uint32_t datagram_layer_checksum = 0) const;
 
     //! \name Accessors
