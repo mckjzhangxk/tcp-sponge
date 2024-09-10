@@ -34,6 +34,9 @@ bool TCPReceiver::segment_received(const TCPSegment &seg) {
 
     //数据payload 所对应的 【绝对索引】
     uint64_t start_abs_index=unwrap(hdr.seqno, *_isn, start_window_index);
+
+    if(start_abs_index<start_window_index)
+        return false;
     uint16_t end_abs_index=start_abs_index+seg.length_in_sequence_space();
     if (start_abs_index==end_abs_index)
     {

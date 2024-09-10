@@ -30,7 +30,7 @@ StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity),
 void StreamReassembler::_push(const string &data, uint64_t start_index){
         if(data.size()==0)
             return;
-        char * _data_pointer=(char*)data.data();
+        const char * _data_pointer=data.data();
         size_t data_sz=data.size();
 
         if(start_index<_accept_index){

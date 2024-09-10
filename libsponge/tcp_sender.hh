@@ -79,7 +79,7 @@ class TCPSender {
     uint64_t _next_seqno;
     
 
-    ;//被确认 的【绝对序号】，也是发生窗口的开始索引
+    //被确认 的【绝对序号】，也是发生窗口的开始索引
     uint64_t _ackno;
     Timer _timer;
 

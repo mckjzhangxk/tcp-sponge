@@ -45,16 +45,20 @@ void TCPSender::fill_window() {
     {
         TCPSegment seg;
         seg.header().seqno=wrap(_next_seqno,_isn);
-
-        int n=min((size_t)remain-!_syn_send,TCPConfig::MAX_PAYLOAD_SIZE);//可以发送的最多字节数量，不包括特殊字符
+        size_t rr=remain;
+        size_t n=min(rr-!_syn_send,TCPConfig::MAX_PAYLOAD_SIZE);//可以发送的最多字节数量，不包括特殊字符
         
         if(!_syn_send){
             _syn_send= true;
             seg.header().syn=true;
         }
-        
+
         std::string sendData=_stream.read(n);//从发送流中取出最多n个字节
-        seg.payload()=Buffer(std::move(sendData));
+        if (sendData.size()>0)
+            seg.payload()=Buffer(std::move(sendData));
+
+
+
 
         if (n>seg.length_in_sequence_space()&&_stream.eof()){//如果还有剩余空间，并且发送流结束
             _fin_send=true;

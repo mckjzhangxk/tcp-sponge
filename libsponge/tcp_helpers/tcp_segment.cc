@@ -40,6 +40,5 @@ BufferList TCPSegment::serialize(const uint32_t datagram_layer_checksum) const {
     BufferList ret;
     ret.append(header_out.serialize());//BufferList{string}
     ret.append(_payload);//BufferList{Buffer}
-
     return ret;
 }

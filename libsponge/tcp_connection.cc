@@ -33,11 +33,14 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
 
     
      //  sender处于SYN_SENT，只应该收到syn或者syn-ack,不应该接受有负载的数据包
-    if (_in_syn_sent() && seg.header().ack && seg.payload().size() > 0) {
+    if (_in_syn_sent() && hdr.ack && payload.size() > 0) {
         return;
     }
 
     if(hdr.rst){//收到对方的rst,只需要修改TCPConnect的状态，不需要回复RST
+//        if (_in_syn_sent() && !hdr.ack) {
+//            return;
+//        }
         _unclean_shutdown(false);
         return;
     }
@@ -45,15 +48,22 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     
     //对于sender
     if(hdr.ack){
+        if(_in_listen()){
+            _unclean_shutdown(true);
+            return;
+        }
         if(!_sender.ack_received(hdr.ackno,hdr.win)){//说明对方给我们的确认号是错误的，再次发送一个空ack,让对方明确我方的seq
             need_reply_empty=true;
         }
     }
+
     //对于receiver
     if( !_receiver.segment_received(seg)){//返回false,说明seg不在receiver的接收窗口内,再次发送一个空ack,给对方纠正错误(ack,win)
-           need_reply_empty=true;
+        if(_receiver.ackno().has_value())
+            need_reply_empty=true;
+
     }else if(seg.length_in_sequence_space()>0){//正确接收后的"负载"需要被回复
-        if(seg.header().syn&&_sender.next_seqno_absolute()==0){
+        if(hdr.syn&&_sender.next_seqno_absolute()==0){
             connect();
             return;
         }
@@ -126,7 +136,7 @@ void  TCPConnection::_push_segments_out(){
          auto& seg = _sender.segments_out().front();
          _sender.segments_out().pop();
 
-         TCPHeader hdr=seg.header();
+         TCPHeader& hdr=seg.header();
          auto ackopt=_receiver.ackno();
          hdr.win=1;
          if (ackopt.has_value())
@@ -178,7 +188,7 @@ void TCPConnection::_clean_shutdown(){
     }else if (preq1&&preq3){
         if(_linger_after_streams_finish==false)
                 _active=false;
-        else if(time_since_last_segment_received()>10*_cfg.rt_timeout){
+        else if(time_since_last_segment_received()>=10*_cfg.rt_timeout){
                 _active=false;
         }
     }
@@ -199,3 +209,9 @@ bool TCPConnection::_in_syn_sent() {
 bool TCPConnection::_fin_sent() {
       return _sender.stream_in().eof() && (2+_sender.stream_in().bytes_written()) == _sender.next_seqno_absolute();
 }
+
+
+bool TCPConnection::_in_listen()  {
+    return not _receiver.ackno().has_value() &&_sender.next_seqno_absolute()==0;
+}
+

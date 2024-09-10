@@ -43,6 +43,7 @@ class TCPConnection {
     //是否只发送了syn,没有收到syn-ack
     bool _in_syn_sent();
     bool _fin_sent();
+    bool _in_listen();
   public:
     //! \name "Input" interface for the writer
     //!@{
