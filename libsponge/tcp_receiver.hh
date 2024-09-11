@@ -59,7 +59,9 @@ class TCPReceiver {
     //接收一个TCP Segment
     // 1.最终 调用 _reassembler.push_string(seg.payload(),streamIndex,seg.hdr().fin)
     // 2.对于syn的 segment,更新 内部的isn,  用于ackno()方法的计算
-    // 3.返回 是否有数据被接收
+    // 3.返回 
+    //     3.1如果receiver处于listen状态，返回false
+    //     3.2否则返回 seg是否在【接收窗口内】
     //! \brief handle an inbound segment
     //! \returns `true` if any part of the segment was inside the window
     bool segment_received(const TCPSegment &seg);

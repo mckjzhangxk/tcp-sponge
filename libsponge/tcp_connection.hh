@@ -25,26 +25,33 @@ class TCPConnection {
     size_t _time_since_last_segment_received{0};
     bool _active{true};
     
-    //发送出去，从sender.segments_out() 把segment 移送到 _segments_out中
+    //把segment 从_sender的输出队列sender.segments_out() 移送到 _segments_out中
     // 1.并且 填写 关于 _receiver的信息，包括 ack,ackno,win
     // 2.rst标志
     void _push_segments_out();
-    // 中断，执行以下
+
+
+    // //针对 【本次会话】 的异常终止 与是否回复rst，执行以下
     // 1. receriver.output.seterror(),sender.input.seterror()
     // 2.全局的 _active设置成false
     // 3.如果send_rst=true,发送给对方一个rst数据
     void _unclean_shutdown(bool send_rst=true);
-    void _unclean_shutdown(WrappingInt32 seqno);
+
+      
+    //针对 【非本次会话】 的异常终止 与回复rst
+    // 【非本次会话】 表示 _sender.isn(remote) != _receriver.isn(local)
+    void _unclean_shutdown(WrappingInt32 seqno,WrappingInt32 ackno);
 
     //本方法目的是 根据sender,receriver的状态，修改_active=false
     void _clean_shutdown();
     
+
+    //回复使用_sender发生空的ack,数据包的seqno已经被_sender填写好，
+    // 如果发送队列有segment,不需要单独发生确认包，否则可以回复一个空的
     void _push_ack_segment();
 
-    //是否只发送了syn,没有收到syn-ack
-    bool _in_syn_sent();
+
     bool _fin_sent();
-    bool _in_listen();
   public:
     //! \name "Input" interface for the writer
     //!@{

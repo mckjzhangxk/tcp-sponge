@@ -29,7 +29,7 @@ bool TCPReceiver::segment_received(const TCPSegment &seg) {
     if (!_isn.has_value()&&hdr.syn)
         _isn=hdr.seqno;
 
-    if(!_isn.has_value())
+    if(!_isn.has_value())//这里是否应该抛出异常？？？而不是返回false
         return false;
 
     //数据payload 所对应的 【绝对索引】
