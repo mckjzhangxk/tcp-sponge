@@ -73,6 +73,10 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
             _unclean_shutdown(false);
             return;
         }
+    } else{
+        if (_sender_state==TCPSenderStateSummary::SYN_SENT&&hdr.rst){
+            return ;
+        }
     }
 
     const auto& _receiver_state=st.state_summary(_receiver);
