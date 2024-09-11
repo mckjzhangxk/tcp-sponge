@@ -34,6 +34,7 @@ class TCPConnection {
     // 2.全局的 _active设置成false
     // 3.如果send_rst=true,发送给对方一个rst数据
     void _unclean_shutdown(bool send_rst=true);
+    void _unclean_shutdown(WrappingInt32 seqno);
 
     //本方法目的是 根据sender,receriver的状态，修改_active=false
     void _clean_shutdown();

@@ -26,7 +26,7 @@ bool TCPReceiver::segment_received(const TCPSegment &seg) {
         end_windex_index++;
     }
 
-    if (hdr.syn)
+    if (!_isn.has_value()&&hdr.syn)
         _isn=hdr.seqno;
 
     if(!_isn.has_value())

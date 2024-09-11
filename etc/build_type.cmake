@@ -8,6 +8,8 @@ if (NOT (CMAKE_BUILD_TYPE_SHADOW STREQUAL CMAKE_BUILD_TYPE))
     endif ()
     set (CMAKE_BUILD_TYPE_SHADOW ${CMAKE_BUILD_TYPE} CACHE STRING "used to detect changes in build type" FORCE)
 endif ()
+set(CMAKE_BUILD_TYPE "Debug")
+set(CMAKE_CXX_FLAGS "-g")
 
 message (STATUS "  NOTE: You can choose a build type by calling cmake with one of:")
 message (STATUS "    -DCMAKE_BUILD_TYPE=Release   -- full optimizations")

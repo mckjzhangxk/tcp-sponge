@@ -37,31 +37,44 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         return;
     }
 
-    if(hdr.rst){//收到对方的rst,只需要修改TCPConnect的状态，不需要回复RST
-//        if (_in_syn_sent() && !hdr.ack) {
-//            return;
-//        }
-        _unclean_shutdown(false);
-        return;
-    }
+//    if(hdr.rst){//收到对方的rst,只需要修改TCPConnect的状态，不需要回复RST
+////        if (_in_syn_sent() && !hdr.ack) {
+////            return;
+////        }
+//        _unclean_shutdown(false);
+//        return;
+//    }
+
     bool need_reply_empty=false;//表示需要恢复确认包
     
     //对于sender
     if(hdr.ack){
-        if(_in_listen()){
+        if(_in_listen()){//我没有发包不需要确认？
             _unclean_shutdown(true);
             return;
         }
+        if(_in_syn_sent()&&(_sender.next_seqno()!=hdr.ackno)){//只发送syn，但是确认错误，说明这根本不是对本tcp的ack
+            if(!hdr.rst)
+                _unclean_shutdown(hdr.ackno);
+            return;
+        }
+
         if(!_sender.ack_received(hdr.ackno,hdr.win)){//说明对方给我们的确认号是错误的，再次发送一个空ack,让对方明确我方的seq
             need_reply_empty=true;
+        } else if(hdr.rst){
+            _unclean_shutdown(false);
+            return;
         }
     }
 
     //对于receiver
     if( !_receiver.segment_received(seg)){//返回false,说明seg不在receiver的接收窗口内,再次发送一个空ack,给对方纠正错误(ack,win)
-        if(_receiver.ackno().has_value())
+        if(_receiver.ackno().has_value()&&!hdr.rst)//说明对方发送了syn
             need_reply_empty=true;
 
+    }else if(hdr.rst){
+        _unclean_shutdown(false);
+        return;
     }else if(seg.length_in_sequence_space()>0){//正确接收后的"负载"需要被回复
         if(hdr.syn&&_sender.next_seqno_absolute()==0){
             connect();
@@ -164,11 +177,24 @@ void TCPConnection::_unclean_shutdown(bool send_rst){
             _receiver.stream_out().set_error();
 
             if(send_rst){//发生给对方一个数据包
-                _push_ack_segment();
+               _push_ack_segment();
             }
 
 }
+void TCPConnection::_unclean_shutdown(WrappingInt32 seqno){
+    _unclean_shutdown(false);
 
+
+        TCPSegment seg;
+        TCPHeader& hdr=seg.header();
+
+        hdr.seqno=seqno;
+        hdr.rst= true;
+        _segments_out.push(seg);
+
+
+
+}
 //本方法目的是修改_active=false
 void TCPConnection::_clean_shutdown(){
     if(!_active)
