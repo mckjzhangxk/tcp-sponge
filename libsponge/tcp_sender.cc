@@ -111,11 +111,14 @@ bool TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     }
     //有了确认，窗口发生了滑动，可以发送更多的数据了！！！
     fill_window();
+
+    if(_outstanding_segs.size()>0)
+        _timer.start();
     return true;
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
-void TCPSender::tick(const size_t ms_since_last_tick) { 
+void TCPSender::tick(const size_t ms_since_last_tick) {
     if(_timer.expire(ms_since_last_tick)){
 
         _timer.double_mul();//从0开始计数

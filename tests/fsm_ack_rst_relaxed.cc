@@ -23,8 +23,11 @@ static void ack_listen_test(const TCPConfig &cfg,
         // any ACK should result in a RST
         test.send_ack(seqno, ackno);
 
-        test.execute(ExpectState{State::LISTEN});
-        test.execute(ExpectNoSegment{}, "test 3 failed: ACKs in LISTEN should be ignored");
+        test.execute(ExpectState{State::RESET});
+        test.execute(ExpectOneSegment{}.with_rst(true), "test 3 failed: no RST after ACK in LISTEN");
+
+//        test.execute(ExpectState{State::LISTEN});
+//        test.execute(ExpectNoSegment{}, "test 3 failed: ACKs in LISTEN should be ignored");
     } catch (const exception &e) {
         throw runtime_error(string(e.what()) + " (ack_listen_test called from line " + to_string(lineno) + ")");
     }

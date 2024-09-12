@@ -35,23 +35,24 @@ bool TCPReceiver::segment_received(const TCPSegment &seg) {
     //数据payload 所对应的 【绝对索引】
     uint64_t start_abs_index=unwrap(hdr.seqno, *_isn, start_window_index);
 
-    if(start_abs_index<start_window_index)
-        return false;
+
     uint16_t end_abs_index=start_abs_index+seg.length_in_sequence_space();
     if (start_abs_index==end_abs_index)
     {
         end_abs_index++;
     }
 
+    int ret=contain(start_window_index,end_windex_index,start_abs_index,end_abs_index);
+
+    if(ret){
+        uint16_t stream_index=start_abs_index?start_abs_index-1:0;
+        auto& payload=seg.payload();
+        _reassembler.push_substring(payload.copy(),stream_index,hdr.fin);
+    }
 
 
-    uint16_t stream_index=start_abs_index?start_abs_index-1:0;
 
-    auto& payload=seg.payload();
-    _reassembler.push_substring(payload.copy(),stream_index,hdr.fin);
-
-
-    return contain(start_window_index,end_windex_index,start_abs_index,end_abs_index);
+    return ret;
 }
 
 std::optional<WrappingInt32> TCPReceiver::ackno() const {
