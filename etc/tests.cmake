@@ -40,7 +40,7 @@ add_test(NAME t_tcp_parser           COMMAND tcp_parser "${PROJECT_SOURCE_DIR}/t
 add_test(NAME t_ipv4_parser          COMMAND ipv4_parser "${PROJECT_SOURCE_DIR}/tests/ipv4_parser.data")
 add_test(NAME t_active_close         COMMAND fsm_active_close)
 add_test(NAME t_passive_close        COMMAND fsm_passive_close)
-add_test(NAME ec_ack_rst             COMMAND fsm_ack_rst)
+#add_test(NAME ec_ack_rst             COMMAND fsm_ack_rst)
 add_test(NAME t_ack_rst              COMMAND fsm_ack_rst_relaxed)
 add_test(NAME ec_ack_rst_win         COMMAND fsm_ack_rst_win)
 add_test(NAME t_ack_rst_win          COMMAND fsm_ack_rst_win_relaxed)

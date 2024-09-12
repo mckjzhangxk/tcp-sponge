@@ -56,8 +56,10 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
                 //为了让remote能正确 确认发生的rst数据包,发送的segment
                 // seqnum: remote期待收到的序号(hdr.ackno)
                 // acknum: local对remote信息的确认(hdr.seqno+seg.length_in_sequence_space
-                if(!hdr.rst)
-                    _unclean_shutdown(hdr.ackno,hdr.seqno+seg.length_in_sequence_space());
+                if(!hdr.rst){
+//                    _unclean_shutdown(hdr.ackno,hdr.seqno+seg.length_in_sequence_space());
+                }
+
                 return;
             }
         }
