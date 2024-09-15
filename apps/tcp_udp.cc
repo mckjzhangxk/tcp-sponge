@@ -109,6 +109,11 @@ int main(int argc, char **argv) {
             show_usage(argv[0], "ERROR: required arguments are missing.");
             exit(1);
         }
+        cerr<<"\n[cmd begin]";
+        for (int i = 0; i < argc; ++i) {
+            cerr<<argv[i]<<" ";
+        }
+        cerr<<"[cmd end]\n";
 
         // handle configuration and UDP setup from cmdline arguments
         auto [c_fsm, c_filt, listen] = get_config(argc, argv);
