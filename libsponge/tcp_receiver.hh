@@ -21,8 +21,8 @@ class TCPReceiver {
     size_t _capacity;
     std::optional<WrappingInt32> _isn;
 
-
-    bool contain(uint16_t xlow,uint16_t xhigh,uint16_t ylow,uint16_t yhigh);
+    //类型定义成uint16 造成bug
+    bool contain(uint64_t xlow,uint64_t xhigh,uint64_t ylow,uint64_t yhigh);
   public:
     //! \brief Construct a TCP receiver
     //!

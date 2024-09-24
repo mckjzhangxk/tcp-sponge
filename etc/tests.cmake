@@ -1,7 +1,7 @@
 enable_testing ()
 
 set (LOSS_RATE 0.1)
-
+#
 #add_test(NAME t_wrapping_ints_cmp    COMMAND wrapping_integers_cmp)
 #add_test(NAME t_wrapping_ints_unwrap COMMAND wrapping_integers_unwrap)
 #add_test(NAME t_wrapping_ints_wrap   COMMAND wrapping_integers_wrap)
@@ -59,16 +59,20 @@ set (LOSS_RATE 0.1)
 #add_test(NAME t_address_dt           COMMAND address_dt)
 #add_test(NAME t_parser_dt            COMMAND parser_dt)
 #add_test(NAME t_socket_dt            COMMAND socket_dt)
-#
+
+#以测试
 #add_test(NAME t_udp_client_send      COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -ucS)
 #add_test(NAME t_udp_server_send      COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -usS)
 #add_test(NAME t_udp_client_recv      COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -ucR)
 #add_test(NAME t_udp_server_recv      COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -usR)
 #add_test(NAME t_udp_client_dupl      COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -ucD)
 #add_test(NAME t_udp_server_dupl      COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -usD)
-
-add_test(NAME t_ucS_1M_32k           COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -ucSd 1M -w 32K)
+#
+#add_test(NAME t_ucS_1M_32k           COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -ucSd 1M -w 32K)
 #add_test(NAME t_ucS_128K_8K          COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -ucSd 128K -w 8K)
+
+
+# t_ucD_128K_8K出现过错误
 #add_test(NAME t_ucS_16_1             COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -ucSd 16 -w 1)
 #add_test(NAME t_ucS_32K_d            COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -ucSd 32K)
 #add_test(NAME t_ucR_1M_32k           COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -ucRd 1M -w 32K)
@@ -79,7 +83,8 @@ add_test(NAME t_ucS_1M_32k           COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -uc
 #add_test(NAME t_ucD_128K_8K          COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -ucDd 128K -w 8K)
 #add_test(NAME t_ucD_16_1             COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -ucDd 16 -w 1)
 #add_test(NAME t_ucD_32K_d            COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -ucDd 32K)
-#
+##
+# t_usS_32K_d出现过错误
 #add_test(NAME t_usS_1M_32k           COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -usSd 1M -w 32K)
 #add_test(NAME t_usS_128K_8K          COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -usSd 128K -w 8K)
 #add_test(NAME t_usS_16_1             COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -usSd 16 -w 1)
@@ -103,8 +108,8 @@ add_test(NAME t_ucS_1M_32k           COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -uc
 #add_test(NAME t_ucD_128K_8K_L        COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -ucDd 128K -w 8K -L ${LOSS_RATE})
 #add_test(NAME t_ucD_128K_8K_lL       COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -ucDd 128K -w 8K -l ${LOSS_RATE} -L ${LOSS_RATE})
 #
-#add_test(NAME t_usS_128K_8K_l        COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -usSd 128K -w 8K -l ${LOSS_RATE})
-#add_test(NAME t_usS_128K_8K_L        COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -usSd 128K -w 8K -L ${LOSS_RATE})
+add_test(NAME t_usS_128K_8K_l        COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -usSd 128K -w 8K -l ${LOSS_RATE})
+add_test(NAME t_usS_128K_8K_L        COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -usSd 128K -w 8K -L ${LOSS_RATE})
 #add_test(NAME t_usS_128K_8K_lL       COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -usSd 128K -w 8K -l ${LOSS_RATE} -L ${LOSS_RATE})
 #add_test(NAME t_usR_128K_8K_l        COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -usRd 128K -w 8K -l ${LOSS_RATE})
 #add_test(NAME t_usR_128K_8K_L        COMMAND "${PROJECT_SOURCE_DIR}/txrx.sh" -usRd 128K -w 8K -L ${LOSS_RATE})
