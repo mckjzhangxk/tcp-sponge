@@ -153,7 +153,7 @@ void TCPSpongeSocket<AdaptT>::_initialize_TCP(const TCPConfig &config) {
             const std::string buffer = inbound.peek_output(amount_to_write);
             const auto bytes_written = _thread_data.write(move(buffer), false);
             inbound.pop_output(bytes_written);//部分写入，移除已经写入的
-
+            //fprintf(stderr,"poped %ld\n",bytes_written);
             if (inbound.eof() or inbound.error()) {
                 _thread_data.shutdown(SHUT_WR);
                 _inbound_shutdown = true;
@@ -162,7 +162,7 @@ void TCPSpongeSocket<AdaptT>::_initialize_TCP(const TCPConfig &config) {
                 cerr << "DEBUG: Inbound stream from " << _datagram_adapter.config().destination.to_string()
                      << " finished " << (inbound.error() ? "with an error/reset.\n" : "cleanly.\n");
                 if (_tcp.value().state() == TCPState::State::TIME_WAIT) {
-                    cerr << "DEBUG: Waiting for lingering segments (e.g. retransmissions of FIN) from peer...\n";
+                    cerr << "DEBUG: Waiting for lingering segments (e.g. retransmissions of FIN) from peer... "<<_datagram_adapter.config().destination.to_string()<<" \n";
                 }
             }
         },

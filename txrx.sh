@@ -123,6 +123,7 @@ test_connect () {
 
 ref_listen () {
     [ "$#" != 2 ] && { echo "bad args"; exit 1; }
+    echo "$1" "$2" "${REF_PROG}" "${REF_HOST}"
     if [ "$IUMODE" = "u" ] || [ -z "$USE_IPV4" ] || [ "$USE_IPV4" = "n" ]; then
         _rt_listen "$1" "$2" "${REF_PROG}" "${REF_HOST}"
     else

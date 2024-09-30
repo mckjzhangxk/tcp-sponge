@@ -13,3 +13,13 @@ dd status=none if=/dev/urandom of=s1 bs=1000000 count=1
 #
 #[cmd begin]./apps/tcp_udp -t 12 -w 32768 169.254.144.1 9980 [cmd end]
 
+
+
+#创建数据
+dd status=none if=/dev/zero of=s1 bs=1000000 count=1
+
+#服务端
+./tcp_ipv4 -t 12  -d tun145 -a 169.254.145.9 -l 169.254.145.9 55555 >r1 </dev/null
+
+#客户端
+./tcp_ipv4 -t 12  -d tun144 -a 169.254.144.9 169.254.145.9 55555 >/dev/null <s1

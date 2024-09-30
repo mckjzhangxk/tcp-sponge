@@ -92,7 +92,7 @@ class TCPSender {
     BufferList _outstanding_segs;
 
 
-    void _transmit(TCPSegment & seg,bool need_retry=true);
+    void _transmit(TCPSegment & seg,bool is_new_segment =true);
 
   public:
     //! Initialize a TCPSender
