@@ -45,7 +45,15 @@ static void check_argc(int argc, char **argv, int curr, const char *err) {
         exit(1);
     }
 }
-
+//返回
+// TCPConfig c_fsm{};
+// FdAdapterConfig c_filt{};
+// bool listen
+//命令行参数中 argv[-2] argv[-1] 分别是ip port
+// 1.对应 listen
+//  设置c_filt.source={0，port}
+// 2.对应 非listen
+//  设置c_filt.destination={ip，port}
 static tuple<TCPConfig, FdAdapterConfig, bool> get_config(int argc, char **argv) {
     TCPConfig c_fsm{};
     FdAdapterConfig c_filt{};
@@ -53,30 +61,32 @@ static tuple<TCPConfig, FdAdapterConfig, bool> get_config(int argc, char **argv)
     int curr = 1;
     bool listen = false;
 
-    while (argc - curr > 2) {
-        if (strncmp("-l", argv[curr], 3) == 0) {
+    while (argc - curr > 2) {//curr<argc-2
+        if (strncmp("-l", argv[curr], 3) == 0) {//-l表示是否listen
             listen = true;
             curr += 1;
 
-        } else if (strncmp("-w", argv[curr], 3) == 0) {
+        } else if (strncmp("-w", argv[curr], 3) == 0) {//-w 是 receriver的recv_capacity
             check_argc(argc, argv, curr, "ERROR: -w requires one argument.");
             c_fsm.recv_capacity = strtol(argv[curr + 1], nullptr, 0);
             curr += 2;
 
-        } else if (strncmp("-t", argv[curr], 3) == 0) {
+        } else if (strncmp("-t", argv[curr], 3) == 0) {//-t  是rtt
             check_argc(argc, argv, curr, "ERROR: -t requires one argument.");
             c_fsm.rt_timeout = strtol(argv[curr + 1], nullptr, 0);
             curr += 2;
 
-        } else if (strncmp("-Lu", argv[curr], 3) == 0) {
+        } else if (strncmp("-Lu", argv[curr], 3) == 0) {//上传 的丢失率，百分比
             check_argc(argc, argv, curr, "ERROR: -Lu requires one argument.");
             float lossrate = strtof(argv[curr + 1], nullptr);
+
+            //decltype表示自动推到类型， LossRateUpT是一个类型
             using LossRateUpT = decltype(c_filt.loss_rate_up);
             c_filt.loss_rate_up =
                 static_cast<LossRateUpT>(static_cast<float>(numeric_limits<LossRateUpT>::max()) * lossrate);
             curr += 2;
 
-        } else if (strncmp("-Ld", argv[curr], 3) == 0) {
+        } else if (strncmp("-Ld", argv[curr], 3) == 0) {//下载 的丢失率，百分比
             check_argc(argc, argv, curr, "ERROR: -Lu requires one argument.");
             float lossrate = strtof(argv[curr + 1], nullptr);
             using LossRateDnT = decltype(c_filt.loss_rate_dn);
@@ -103,17 +113,20 @@ static tuple<TCPConfig, FdAdapterConfig, bool> get_config(int argc, char **argv)
     return make_tuple(c_fsm, c_filt, listen);
 }
 
+void print_cmd_and_args(int argc, char **argv){
+        cerr<<"\n[cmd begin]";
+        for (int i = 0; i < argc; ++i) {
+            cerr<<argv[i]<<" ";
+        }
+        cerr<<"[cmd end]\n";
+}
 int main(int argc, char **argv) {
     try {
         if (argc < 3) {
             show_usage(argv[0], "ERROR: required arguments are missing.");
             exit(1);
         }
-        cerr<<"\n[cmd begin]";
-        for (int i = 0; i < argc; ++i) {
-            cerr<<argv[i]<<" ";
-        }
-        cerr<<"[cmd end]\n";
+        print_cmd_and_args(argc,argv);
 
         // handle configuration and UDP setup from cmdline arguments
         auto [c_fsm, c_filt, listen] = get_config(argc, argv);
@@ -129,7 +142,7 @@ int main(int argc, char **argv) {
         } else {
             tcp_socket.connect(c_fsm, c_filt);
         }
-
+        
         bidirectional_stream_copy(tcp_socket);
         tcp_socket.wait_until_closed();
     } catch (const exception &e) {

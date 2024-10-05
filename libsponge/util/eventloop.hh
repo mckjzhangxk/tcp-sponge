@@ -30,7 +30,7 @@ class EventLoop {
         CallbackT callback;   //!< A callback that reads or writes fd.如果fd上触发direction事件，调用callback
         InterestT interest;   //!< A callback that returns `true` whenever fd should be polled.表示是否可以被poll
         CallbackT cancel;     //!< A callback that is called when the rule is cancelled (e.g. on hangup)，当fd hungup,本规则被取消被调用，并且本办法
-
+        //canel的原因是由于异常导致
         //! Returns the number of times fd has been read or written, depending on the value of Rule::direction.
         //! \details This function is used internally by EventLoop; you will not need to call it
         // 统计读/写 bytes数量

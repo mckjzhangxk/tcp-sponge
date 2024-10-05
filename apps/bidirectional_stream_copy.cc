@@ -8,7 +8,13 @@
 #include <unistd.h>
 
 using namespace std;
+// read(stdin)-->ByteStream(_outbound) -->write(socket)
+//  stdin.eof() ->_outbound.end_input(),  _outbound.eof()-> socket.shutdown()
 
+// read(socket)-->ByteStream(_inbound) -->write(stdout)
+// socket.eof() -> _inbound.end_input(),  _inbound->eof()-> stdout.close()
+
+// 设置好eventloop,直到Loop的退出
 void bidirectional_stream_copy(Socket &socket) {
     constexpr size_t max_copy_length = 65536;
     constexpr size_t buffer_size = 1048576;
@@ -26,6 +32,11 @@ void bidirectional_stream_copy(Socket &socket) {
     _output.set_blocking(false);
 
     // rule 1: read from stdin into outbound byte stream
+    //stdin被poll条件是 
+    // 1._outbound还有剩余的空间 
+    // 2._outbound 没有错误
+    // stdin上发生 异常(eof或hangup)
+    //  调用 __outbound.end_input()
     _eventloop.add_rule(_input,
                         Direction::In,
                         [&] {
@@ -38,6 +49,12 @@ void bidirectional_stream_copy(Socket &socket) {
                         [&] { _outbound.end_input(); });
 
     // rule 2: read from outbound byte stream into socket
+    // socket被poll 的条件是 
+    // 1._outbound 有数据可读
+    // 2._outbound.eof()，但是还没有调用socket.shutdown()
+
+    //如果socket上发生 异常(eof或hangup)
+    // 调用 _outbound.set_error()
     _eventloop.add_rule(socket,
                         Direction::Out,
                         [&] {
@@ -53,6 +70,13 @@ void bidirectional_stream_copy(Socket &socket) {
                         [&] { _outbound.set_error(); });
 
     // rule 3: read from socket into inbound byte stream
+
+    //socket被poll的条件是 
+    //1._inbound 有数据可读
+    //2. _inbound  没有错误
+
+    //如果socket发生异常(hangup或者eof)
+    // 调用_inbound.end_input()
     _eventloop.add_rule(socket,
                         Direction::In,
                         [&] {
@@ -65,6 +89,12 @@ void bidirectional_stream_copy(Socket &socket) {
                         [&] { _inbound.end_input(); });
 
     // rule 4: read from inbound byte stream into stdout
+    //stdout被poll的条件是 
+    // 1._inbound 还有数据可读
+    // 2._inbound虽然被 终止， 但是还没有 调用stdout.close()
+
+    // stdout发生异常(hangup或者eof)
+    // 调用 _inbound.set_error()
     _eventloop.add_rule(_output,
                         Direction::Out,
                         [&] {

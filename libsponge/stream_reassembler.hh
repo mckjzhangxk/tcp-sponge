@@ -31,7 +31,9 @@ class StreamReassembler {
     void _push(const std::string &data,  uint64_t index);
 
     std::optional<Block> _pop();
-    bool _accept_bytes();
+
+
+    bool _input_end(){return _accept_index==_eof_index;}
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
     //! \note This capacity limits both the bytes that have been reassembled,
