@@ -33,7 +33,12 @@ class StreamReassembler {
     std::optional<Block> _pop();
 
 
-    bool _input_end(){return _accept_index==_eof_index;}
+    bool _input_end(){
+        char r=_accept_index==_eof_index;
+        if(r)
+            _output.end_input();
+        return r;
+    }
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
     //! \note This capacity limits both the bytes that have been reassembled,

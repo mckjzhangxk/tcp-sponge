@@ -78,20 +78,22 @@ void StreamReassembler::_push(const string &data, uint64_t start_index){
             struct Block b{start_index,end_index,std::string{dv}};
             _blocks.emplace_back(b);
             _block_sz+=b.data.size();
+            it=_blocks.end();
+            it--;
             //return; bug,不应该被返回
         }
-        
-        
+
         //front 与front 之后的合并
         std::list<Block>::iterator front=it;
+
+
         int cnt=1;
         if(front!=_blocks.begin()){
-            front--;
             cnt=2;
         }
             
             
-        for (size_t t = 0; t < cnt; t++){
+        for (int t = 0; t < cnt; t++){
             it=front;
             while(++it != _blocks.end()){ //向后合并
                 if( front->end_index >= it->start_index ){
@@ -110,10 +112,8 @@ void StreamReassembler::_push(const string &data, uint64_t start_index){
                 }else
                     break;
             }
-            front++;
+            front--;
         }
-            
-        
 }
 
 
@@ -159,7 +159,7 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
         _eof_index=index+data.size();
     }
 
-    if (data.size()==0||_input_end()){
+    if (_input_end()||data.size()==0){
         return;
     }
 
@@ -168,8 +168,8 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
     if(r.has_value()){
         size_t n=_output.write(r->data);
         _accept_index=_output.bytes_written();
-        // if (_input_end())
-        //     return;
+         if (_input_end())
+             return;
         if(n<r->data.size()){
             _push(r->data.substr(n),_accept_index);
         }

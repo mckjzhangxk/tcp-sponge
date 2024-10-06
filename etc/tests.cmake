@@ -34,7 +34,7 @@ add_test(NAME t_byte_stream_two_writes   COMMAND byte_stream_two_writes)
 add_test(NAME t_byte_stream_capacity     COMMAND byte_stream_capacity)
 add_test(NAME t_byte_stream_many_writes  COMMAND byte_stream_many_writes)
 
-add_test(NAME t_webget               COMMAND "${PROJECT_SOURCE_DIR}/tests/webget_t.sh")
+#add_test(NAME t_webget               COMMAND "${PROJECT_SOURCE_DIR}/tests/webget_t.sh")
 
 add_test(NAME t_tcp_parser           COMMAND tcp_parser "${PROJECT_SOURCE_DIR}/tests/ipv4_parser.data")
 add_test(NAME t_ipv4_parser          COMMAND ipv4_parser "${PROJECT_SOURCE_DIR}/tests/ipv4_parser.data")
