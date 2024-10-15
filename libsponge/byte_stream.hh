@@ -17,8 +17,8 @@ class ByteStream {
   private:
     // Your code here -- add private members as necessary.
     
-    BufferList _buffer = {};
-
+//    BufferList _buffer = {};
+    std::string _buffer={};
     size_t _capacity = 0;
     size_t _read_count = 0;
     size_t _write_count = 0;

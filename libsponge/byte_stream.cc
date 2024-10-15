@@ -27,7 +27,11 @@ size_t ByteStream::write(const string &data) {
         len = _capacity - _buffer.size();
     }
     _write_count += len;
-    _buffer.append(BufferList(std::move(string().assign(data.begin(),data.begin()+len))));
+//    _buffer.append(BufferList(std::move(string().assign(data.begin(),data.begin()+len))));
+    if(len<data.length())
+        _buffer.append(data.substr(0,len));
+    else
+        _buffer.append(data);
     return len;
 }
 
@@ -40,8 +44,8 @@ string ByteStream::peek_output(const size_t len) const {
     if (length > _buffer.size()) {
         length = _buffer.size();
     }
-    string s=_buffer.concatenate();
-    return string().assign(s.begin(), s.begin() + length);
+
+    return _buffer.substr(0,len);
     
 }
 
@@ -57,7 +61,7 @@ void ByteStream::pop_output(const size_t len) {
     }
     _read_count += length;
     
-    _buffer.remove_prefix(length);
+    _buffer=_buffer.substr(length);
     return;
  }
 

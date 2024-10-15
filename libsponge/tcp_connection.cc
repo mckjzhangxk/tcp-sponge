@@ -181,9 +181,9 @@ void TCPConnection::_push_segments_out() {
             if (sws > std::numeric_limits<uint16_t>().max()) {
                 sws = std::numeric_limits<uint16_t>().max();
             }
-            if (sws==0){
-                fprintf(stderr,"receiver wind=%ld\n",sws);
-            }
+//            if (sws==0){
+//                fprintf(stderr,"receiver wind=%ld\n",sws);
+//            }
             hdr.win = sws;
             hdr.ackno = ackopt.value();
         }
