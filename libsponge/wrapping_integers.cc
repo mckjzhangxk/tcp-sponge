@@ -14,7 +14,8 @@ using namespace std;
 //! \param n The input absolute 64-bit sequence number
 //! \param isn The initial sequence number
 WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
-    return isn+n;
+    uint32_t x= static_cast<uint32_t>(n)+isn.raw_value();
+    return WrappingInt32(x);
 }
 
 //! Transform a WrappingInt32 into an "absolute" 64-bit sequence number (zero-indexed)
@@ -28,32 +29,68 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
+
+    uint64_t C=(1ul<<32);
+
     
-    WrappingInt32 n1=wrap(checkpoint,isn);
-    int64_t diff=n-n1,diff1,r;
-    uint64_t pos_diff=0;
-    if (diff<0)
-    {
-        diff1=diff+(1ul<<32);
-        pos_diff=diff1;
-    }else if(diff>0){
-        diff1=diff-(1ul<<32);
-        pos_diff=diff;
+    uint32_t nr=n.raw_value();
+    uint32_t ir=isn.raw_value();
+    
+    uint32_t offset=nr>ir?nr-ir:nr+ (C-ir);
+
+    
+    // checkpoint= a+k*(2**32)
+    uint64_t checkpoint_a=checkpoint&0xffffffff;
+    uint64_t checkpoint_k=checkpoint>>32;
+
+    uint64_t r;
+    int64_t diff=checkpoint_a-offset;
+
+
+    if(diff>=0){
+        if(diff< (C>>1) ){
+            r=checkpoint-diff;
+        }else{
+            r=checkpoint-diff+C;
+        }
     }else{
-        diff1=0;
+        if( -diff< (C>>1)){
+            r=checkpoint-diff;
+        }else{
+            r=checkpoint-diff-C;
+        }
     }
-    
-    if(abs(diff)>abs(diff1))
-        r=diff1;
-    else
-        r=diff;
-
-    if(r>=0){
-    	return checkpoint+diff;
-
-    }else if(checkpoint>=static_cast<uint64_t>(-r) ){
-        return checkpoint-static_cast<uint64_t>(-r);
-    } else{
-        return checkpoint+pos_diff;
-    }
+    return r;
 }
+
+
+// uint64_t unwrap1(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
+    
+//     WrappingInt32 n1=wrap(checkpoint,isn);
+//     int64_t diff=n-n1,diff1,r;
+//     uint64_t pos_diff=0;
+//     if (diff<0)
+//     {
+//         diff1=diff+(1ul<<32);
+//         pos_diff=diff1;
+//     }else if(diff>0){
+//         diff1=diff-(1ul<<32);
+//         pos_diff=diff;
+//     }else{
+//         diff1=0;
+//     }
+    
+//     if(abs(diff)>abs(diff1))
+//         r=diff1;
+//     else
+//         r=diff;
+
+//     if(r>=0){
+//     	return checkpoint+diff;
+
+//     }else if(checkpoint>=static_cast<uint64_t>(-r) ){
+//         return checkpoint-static_cast<uint64_t>(-r);
+//     } else{
+//         return checkpoint+pos_diff;
+//     }
+// }
