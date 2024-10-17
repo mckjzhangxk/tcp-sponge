@@ -29,28 +29,33 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
+    //假设 checkpoint = a + k* 2^32  ，其中 0<= offset <2^32
+    //返回的  r 一定是以下三个之一，其中 0<= offset <2^32
+    //   r= offset + (k+1)* 2^32
+    //   r= offset + k* 2^32,     // r= checkout -a+offset= checkout-(a-offset) = checkout -diff
+    //   r= offset + (k-1)* 2^32
 
-    uint64_t C32=(1ul<<32);
-    uint64_t C31=(1ul<<31);
+    int64_t C32=(1l<<32);
+    int64_t C31=(1l<<31);
     
     uint32_t nr=n.raw_value();
     uint32_t ir=isn.raw_value();
-    
+
+    //通过 n 与 isn 在 之差可以计算 offset,
     uint32_t offset=nr>=ir?nr-ir:nr+ (C32-ir);
 
     
-    // checkpoint= a+k*(2**32)
-    uint64_t checkpoint_a=checkpoint&0xffffffff;
-    // uint64_t checkpoint_k=checkpoint>>32;
+    // checkpoint 的低32位 就算 a
+    int64_t checkpoint_a=checkpoint&0xffffffff;
 
      
     int64_t diff=checkpoint_a-offset;
     int64_t r =checkpoint-diff;
 
-    if(diff> C31){
+    if(diff> C31){ // 表示 checkpoint >> r, 需要把r 加上2^32,  这样 r-checkpoint 就小了
         r+=C32;
-    }else if( -diff>=C31 && r>C32){
-        r-=-C32;
+    }else if( -diff>C31 && r>=C32){ // r>> checkpoint, r 减去2^32, 这样 checkout-r 就小了
+        r-=C32;
     }
     return r;
 }

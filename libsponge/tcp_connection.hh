@@ -13,7 +13,7 @@ class TCPConnection {
     TCPReceiver _receiver{_cfg.recv_capacity};
     TCPSender _sender{_cfg.send_capacity, _cfg.rt_timeout, _cfg.fixed_isn};
 
-    //输出
+    //TCPConnection的输出segment
     //! outbound queue of segments that the TCPConnection wants sent
     std::queue<TCPSegment> _segments_out{};
 
@@ -37,10 +37,6 @@ class TCPConnection {
     // 3.如果send_rst=true,发送给对方一个rst数据
     void _unclean_shutdown(bool send_rst=true);
 
-      
-    //针对 【非本次会话】 的异常终止 与回复rst
-    // 【非本次会话】 表示 _sender.isn(remote) != _receriver.isn(local)
-    void _unclean_shutdown(WrappingInt32 seqno,WrappingInt32 ackno);
 
     //本方法目的是 根据sender,receriver的状态，修改_active=false
     void _clean_shutdown();
@@ -64,13 +60,11 @@ class TCPConnection {
     //! \returns the number of bytes from `data` that were actually written.
     size_t write(const std::string &data);
 
-    //_sender的输入还有多少空间，调用的是_sender.stream_in().remaining_capacity();
-    //! \returns the number of `bytes` that can be written right now.
-    size_t remaining_outbound_capacity() const;
-
     //_终止sender的输入。sender.stream_in()..end_input();
     //! \brief Shut down the outbound byte stream (still allows reading incoming data)
     void end_input_stream();
+
+
     //!@}
 
     //! \name "Output" interface for the reader
@@ -80,17 +74,26 @@ class TCPConnection {
     ByteStream &inbound_stream() { return _receiver.stream_out(); }
     //!@}
 
+
+    //_sender的输入还有多少空间，调用的是_sender.stream_in().remaining_capacity();
+    //! \returns the number of `bytes` that can be written right now.
+    size_t remaining_outbound_capacity() const { return _sender.stream_in().remaining_capacity(); };
+
+
+
     //! \name Accessors used for testing
     // 发送出去但是没有被接收确认的字节数，调用 _sender.bytes_in_flight()
     //!@{
     //! \brief number of bytes sent and not yet acknowledged, counting SYN/FIN each as one byte
-    size_t bytes_in_flight() const;
+    size_t bytes_in_flight() const{ return _sender.bytes_in_flight(); }
 
     //收到但是没有被组装的数据，调用  _receiver.unassembled_bytes()
     //! \brief number of bytes not yet reassembled
-    size_t unassembled_bytes() const;
+    size_t unassembled_bytes() const{return _receiver.unassembled_bytes();};
+
+
     //! \brief Number of milliseconds since the last segment was received
-    size_t time_since_last_segment_received() const;
+    size_t time_since_last_segment_received() const{ return _time_since_last_segment_received; }
     //!< \brief summarize the state of the sender, receiver, and the connection
     TCPState state() const { return {_sender, _receiver, active(), _linger_after_streams_finish}; };
     //!@}
@@ -101,12 +104,12 @@ class TCPConnection {
     //! Called when a new segment has been received from the network
     //获得对端的一个tcpsegment。
     // 本端可以正确的更新
-    // 1._receriver的 ackno,win
-    // 2._sender: 可以新发生的segment
+    // 1._sender: 可以发新的segment
+    // 2._receriver的 ackno,win
 
 
     //以下满足之一，需要回复确认包
-    // 1._receriver正确接受，并且用seqnum， 或者_receriver不能正确接受
+    // 1._receriver seg正确接受，并且用seg.len_in_seq_space()>0， 或者 seg不能正确接受
     // 2._sender收到的确认包有误
     
     void segment_received(const TCPSegment &seg);
@@ -126,7 +129,7 @@ class TCPConnection {
     //! \brief Is the connection still alive in any way?
     //! \returns `true` if either stream is still running or if the TCPConnection is lingering
     //! after both streams have finished (e.g. to ACK retransmissions from the peer)
-    bool active() const;
+    bool active() const{ return _active; };
     //!@}
 
     //! Construct a new connection from a configuration

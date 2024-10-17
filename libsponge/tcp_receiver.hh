@@ -59,7 +59,9 @@ class TCPReceiver {
     //接收一个TCP Segment
     // 1.最终 调用 _reassembler.push_string(seg.payload(),streamIndex,seg.hdr().fin)
     // 2.对于syn的 segment,更新 内部的isn,  用于ackno()方法的计算
-    // 3.返回 
+    // 3.返回 ： 返回数值表示 此segment,是否是 在 _reassembler 组装窗口内的数据报文，如果不是 表示这是失效报文，
+    // 调用者会根据 返回数值，决定是否重传通知sender
+
     //     3.1如果receiver处于listen状态，返回false
     //     3.2否则返回 seg是否在【接收窗口内】
     //! \brief handle an inbound segment

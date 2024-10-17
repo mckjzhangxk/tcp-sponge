@@ -12,14 +12,11 @@ void DUMMY_CODE(Targs &&.../* unused */) {}
 
 using namespace std;
 
-size_t TCPConnection::remaining_outbound_capacity() const { return _sender.stream_in().remaining_capacity(); }
-
-size_t TCPConnection::bytes_in_flight() const { return _sender.bytes_in_flight(); }
-
-size_t TCPConnection::unassembled_bytes() const { return _receiver.unassembled_bytes(); }
-
-size_t TCPConnection::time_since_last_segment_received() const { return _time_since_last_segment_received; }
-
+// 对于 RST的处理逻辑:
+// A.直接跳过 sender.ack_received()逻辑,因为 RST就是要中断,没必要再有确认逻辑了
+// B.对于Recerver:
+//     LISTEN状态: 直接 _unclean_shutdown
+//     SYN_RECV,FIN_RECV状态: 要验证 数据包的Seq是否正确.正确 调用_unclean_shutdown
 void TCPConnection::segment_received(const TCPSegment &seg) {
     if (!_active)
         return;
@@ -27,101 +24,82 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     const TCPHeader &hdr = seg.header();
     const Buffer &payload = seg.payload();
 
-    _time_since_last_segment_received = 0;
+//    _time_since_last_segment_received = 0;
 
-    bool need_reply_empty = false;  // 表示需要恢复确认包
+    bool need_reply_ack = false;  // 表示需要恢复确认包
 
-    const TCPState &st = state();
-    const auto &_sender_state = st.state_summary(_sender);
 
-    // 对于sender,只考虑ackno
-    if (hdr.ack) {
-        //_sender处于 CLOSED,SYN_SENT需要被严格的校验后 确认
-        // 此数据包 是否与本tcpconnect 属于 【统一会话】
-        if (_sender_state == TCPSenderStateSummary::CLOSED) {  // 我没有syn不需要被确认
-            _unclean_shutdown(true);
-            return;
-        } else if (_sender_state == TCPSenderStateSummary::SYN_SENT) {
-            // 对syn 只能有 syn-ack 或者ack,不能携带payload
-            if (payload.size() > 0)
+    bool _sender_closed=_sender.next_seqno_absolute()==0;
+    //对于rst数据包,不用再考虑关于对sender的确认了(ackno,sws)
+    if(!hdr.rst){
+        bool _sender_synsent= !_sender_closed&&(_sender.bytes_in_flight()==_sender.next_seqno_absolute());
+
+        if (hdr.ack) {
+            //_sender处于 CLOSED,SYN_SENT需要被严格的校验后 确认
+            // 此数据包 是否与本tcpconnect 属于 【统一会话】
+            if (_sender_closed) {  // CLOSED状态不应该被确认
+                _unclean_shutdown();
                 return;
-            // 只发送syn出去，收到的还是错误的ackno,说明 不属于【同一次会话】
-            if (_sender.next_seqno() != hdr.ackno) {
-                // 如果remote 还没有关闭，发生rst
-                // 为了让remote能正确 确认发生的rst数据包,发送的segment
-                //  seqnum: remote期待收到的序号(hdr.ackno)
-                //  acknum: local对remote信息的确认(hdr.seqno+seg.length_in_sequence_space
-                if (!hdr.rst) {
-                    //                    _unclean_shutdown(hdr.ackno,hdr.seqno+seg.length_in_sequence_space());
-                }
+            } else if (_sender_synsent) { //SYN_SEND 状态要保证[正确的确认],否则就不是【同一会话】
+                // 1.对syn 只能有 syn-ack 或者ack,不能携带payload
+                // 2.只发送syn出去，收到的还是错误的ackno,说明 不属于【同一次会话】
 
+                if (payload.size() > 0||_sender.next_seqno() != hdr.ackno)
+                    return;
+
+            }
+            // 【同一会话】的处理逻辑
+            // SYN_SENT,SYN_ACKED,FIN_SEND,FIN_ACKED 种状态下的逻辑
+
+            if(!_sender.ack_received(hdr.ackno, hdr.win)){
+                // 非有效确认包,需要重传
+                need_reply_ack = true;
+            }
+        } else{
+            //收到的数据包没有确认 满足以下条件之一 是允许的
+
+            // 1.Sender 处于CLosd 状态
+            // 2.Sender 处于SYN_SENT状态
+            if(!_sender_closed&&!_sender_synsent){
                 return;
             }
-        }
-        // 【同一会话】的处理逻辑
-
-        // 返回false,说明对方给我们的【无效的ackno】
-        if (!_sender.ack_received(hdr.ackno, hdr.win)) {
-            // 需要重传空包,让对方明确我方的seq
-            //  注意这里任务，这个TCP Segment的 hdr.ackno是无效的，
-            //  所以发送TCP Segment所携带的信息(rst) 直接忽略
-            need_reply_empty = true;
-        } else if (hdr.rst) {
-            _unclean_shutdown(false);
-            return;
-        }
-    } else {
-        if (_sender_state == TCPSenderStateSummary::SYN_SENT && hdr.rst) {
-            return;
         }
     }
 
-    const auto &_receiver_state = st.state_summary(_receiver);
+
     // 对于receiver,只考虑hdr.seqno()
-    if (!need_reply_empty) {  // 说明sender认为 segment是有效的
-
-        // LISTEN状态下，还不知道remote的 isn,所以任何的rst都会触发_unclean_shutdown(false)
-        if (_receiver_state == TCPReceiverStateSummary::LISTEN) {
-            if (hdr.rst) {
-                _unclean_shutdown(false);
-                return;
-            }
-        }
-
-        if (_receiver.segment_received(seg)) {
-            if (hdr.rst) {
-                _unclean_shutdown(false);
-                return;
-            }
-            if (seg.length_in_sequence_space() > 0) {  // 正确接收后的"负载"需要被回复
-                if (hdr.syn && _sender_state == TCPSenderStateSummary::CLOSED) {
+    if (!need_reply_ack) {  // 说明sender认为 segment是有效的
+        if(!hdr.rst){
+            _time_since_last_segment_received=0;
+            if (_receiver.segment_received(seg)){
+                if (hdr.syn&& _sender_closed){
                     connect();
                     return;
                 }
-                need_reply_empty = true;
+
+                if (seg.length_in_sequence_space() > 0) {  // 正确接收后的"负载"需要被回复
+
+                    need_reply_ack = true;
+                }
+            } else{
+                need_reply_ack = true;
             }
-        } else {  // 数据包没有被_receiver【确认可被接受】,或者说就是【seqno不在接受窗口内】
-            if (!hdr.rst) {
-                need_reply_empty = true;
+        }else{
+            auto ackopt=_receiver.ackno();
+
+            if (!ackopt.has_value()) { //LISTEN状态下，还不知道remote的 isn,所以任何的rst都会触发_unclean_shutdown(false)
+                _unclean_shutdown(false);
+            } else if(*ackopt==hdr.seqno){//SYN_RECV,FIN_RECV 只要验证 发送的序列号正确,就可以unclean_shutdown了
+                _unclean_shutdown(false);
             }
         }
     }
 
     // 此时，seq,ack,win都已经更新好了,可以回复确认了
-    if (need_reply_empty)
+    if (need_reply_ack)
         _push_ack_segment();
 
     _clean_shutdown();
-}
-
-bool TCPConnection::active() const { return _active; }
-
-size_t TCPConnection::write(const string &data) {
-    auto &bs = _sender.stream_in();
-    size_t n = bs.write(data);
-    _sender.fill_window();
-    _push_segments_out();
-    return n;
 }
 
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
@@ -135,20 +113,27 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
     if (_sender.consecutive_retransmissions() > TCPConfig::MAX_RETX_ATTEMPTS) {  // 如果重试次数过多，发送rst
         fprintf(stderr, "too many retry\n");
         _unclean_shutdown();
-        return;
     } else {  // 因为有可能涉及到重传，所以调用以下发送方法
         _push_segments_out();
         _clean_shutdown();
     }
 }
 
-void TCPConnection::end_input_stream() {
-    _sender.stream_in().end_input();
+void TCPConnection::connect() {  // 发送SYN
     _sender.fill_window();
     _push_segments_out();
 }
 
-void TCPConnection::connect() {
+size_t TCPConnection::write(const string &data) {  // 正常发送数据
+    auto &bs = _sender.stream_in();
+    size_t n = bs.write(data);
+    _sender.fill_window();
+    _push_segments_out();
+    return n;
+}
+
+void TCPConnection::end_input_stream() {  // 发送FIN
+    _sender.stream_in().end_input();
     _sender.fill_window();
     _push_segments_out();
 }
@@ -169,24 +154,25 @@ TCPConnection::~TCPConnection() {
 
 void TCPConnection::_push_segments_out() {
     while (!_sender.segments_out().empty()) {
-        auto &seg = _sender.segments_out().front();
+        auto &seg = _sender.segments_out().front();  // seq,(S,F),payloud以及被设置好了
         _sender.segments_out().pop();
 
         TCPHeader &hdr = seg.header();
         auto ackopt = _receiver.ackno();
-        hdr.win = 1;
+
         if (ackopt.has_value()) {
             hdr.ack = true;
-            size_t sws = _receiver.window_size();
-            if (sws > std::numeric_limits<uint16_t>().max()) {
-                sws = std::numeric_limits<uint16_t>().max();
-            }
-//            if (sws==0){
-//                fprintf(stderr,"receiver wind=%ld\n",sws);
-//            }
-            hdr.win = sws;
             hdr.ackno = ackopt.value();
+
+            size_t sws = _receiver.window_size();
+            hdr.win = sws > 0xffff ? 0xffff : sws;
+
+        } else {
+            hdr.ack = false;
+            hdr.ackno = WrappingInt32(0);
+            hdr.win = 1;
         }
+
         if (_sender.stream_in().error() || _receiver.stream_out().error()) {  // 如果本TCP已经发送过rst,那么 携带RST
             hdr.rst = true;
         }
@@ -195,7 +181,7 @@ void TCPConnection::_push_segments_out() {
 }
 // 针对 【本次会话】 的异常终止 与是否回复rst
 void TCPConnection::_unclean_shutdown(bool send_rst) {
-    fprintf(stderr, "_unclean_shutdown,%s\n",state().name().c_str());
+    fprintf(stderr, "=========UUUUUUCCclean_shutdown,%s===========\n", state().name().c_str());
     _active = false;
     _linger_after_streams_finish = false;
 
@@ -207,18 +193,6 @@ void TCPConnection::_unclean_shutdown(bool send_rst) {
     }
 }
 
-void TCPConnection::_unclean_shutdown(WrappingInt32 seqno, WrappingInt32 ackno) {
-    _unclean_shutdown(false);
-
-    TCPSegment seg;
-    TCPHeader &hdr = seg.header();
-
-    hdr.seqno = seqno;
-    hdr.rst = true;
-    hdr.ack = true;
-    hdr.ackno = ackno;
-    _segments_out.push(seg);
-}
 // 本方法目的是修改_active=false
 void TCPConnection::_clean_shutdown() {
     if (!_active)
@@ -238,14 +212,18 @@ void TCPConnection::_clean_shutdown() {
         if (_linger_after_streams_finish == false)
             _active = false;
         else {
-//            fprintf(stderr,"timewait %ld\n",time_since_last_segment_received());
-            if (time_since_last_segment_received() >= 10 * _cfg.rt_timeout) {
+            //            fprintf(stderr,"timewait %ld\n",time_since_last_segment_received());
+            if (_time_since_last_segment_received >= 10 * _cfg.rt_timeout) {
                 _active = false;
             }
         }
     }
 }
+
+
 // 回复确认包，如果发送队列有segment,不需要单独发生确认包，否则可以回复一个空的
+// 对于Receriver: _push_segments_out()会填写此刻的 ackno,sws
+// 对于Sender: _sender.segments_out()的seg的 seq都是小于 next_seq的合法;序列
 void TCPConnection::_push_ack_segment() {
     if (_sender.segments_out().empty())
         _sender.send_empty_segment();

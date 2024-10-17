@@ -16,8 +16,11 @@
     size_t _rto;//超时数值
     uint32_t _muls;
     bool _running;
+
+
     public:
-    Timer(size_t rto):_current_ticks(0),_rto(rto),_muls(1),_running(false){};
+      uint64_t _ackno;//表示定时器为等待哪个 数据包 而开启的
+    Timer(size_t rto):_current_ticks(0),_rto(rto),_muls(1),_running(false),_ackno{0}{};
 
     //秒表从0 开始计时，ts是已经过去多少ms
     // 当【秒表计时】>=_rto*_muls,返回true
@@ -29,14 +32,23 @@
     };
 
     //秒表启动计时
-    void start(){
-      _running=true;
+    void start(uint64_t ackno){
+      if(!_running){
+          _running=true;
+          _ackno=ackno;
+      }
+//      else{
+//          if(_ackno!=ackno){
+//              throw "ack not equal";
+//          }
+//      }
     }
     //秒表关闭计时，并且重置的默认
     void stop(){
       _running=false;
       _current_ticks=0;
       _muls=1;
+      _ackno=-1;
     }
     uint32_t get_muls()const{
        return _muls;
@@ -65,34 +77,44 @@ class TCPSender {
     std::queue<TCPSegment> _segments_out{};
 
     //! retransmission timer for the connection
+
     // 重传超时值，ms
-    unsigned int _initial_retransmission_timeout;
+//    unsigned int _initial_retransmission_timeout;
 
     //! outgoing stream of bytes that have not yet been sent
     // 输入
     ByteStream _stream;
 
     //发送窗口的大小
-    int _sws;//send window size
+    int _sws;//send window size,来自Receriver
+    // 被确认 的【绝对序号】，也是发生窗口的开始索引,来自Receriver
+    uint64_t _ackno;
 
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno;
     
 
-    //被确认 的【绝对序号】，也是发生窗口的开始索引
-    uint64_t _ackno;
+
     Timer _timer;
 
     //是否发送syn
-    bool _syn_send;
+    bool _syn_sended;
     //是否发送fin
-    bool _fin_send;
+    bool _fin_sended;
     
     //保存发送出去，但是没有被确认的segment
-    BufferList _outstanding_segs;
+    //BufferList _outstanding_segs;
+    std::queue<TCPSegment> _outstanding_segs{};
 
+    void _transmit(TCPSegment & seg,bool is_new_segment =true){
+        _segments_out.push(seg);
 
-    void _transmit(TCPSegment & seg,bool is_new_segment =true);
+        if (is_new_segment) {
+            _outstanding_segs.push(seg);
+        }
+        if (seg.length_in_sequence_space() > 0)
+            _timer.start(_ackno);
+    }
 
   public:
     //! Initialize a TCPSender
