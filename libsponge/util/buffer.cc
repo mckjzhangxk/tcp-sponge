@@ -65,7 +65,7 @@ void BufferList::remove_prefix(size_t n) {
 }
 
 BufferViewList::BufferViewList(const BufferList &buffers) {
-    for (const auto &x : buffers.buffers()) {
+    for (const auto &x : buffers.buffers()) {//x.type=Buffer
         _views.push_back(x);//Buffer可以转成StringView
     }
 }

@@ -11,7 +11,16 @@
 
 // Socket是FileDescriptor， 在此基础之上，有了 一对Address.
 // 而且还有了 connect,bind,shutdown,set_reuseaddr,setsockopt 方法
-
+//             _________            ________________
+//  domain -->|         |  (fd）    |                | --- read
+//  type   -->| syscall | ------>   | FileDescriptor | --- write
+//            |_________|           |________________| --- close,eof()
+//                                  |                |
+//                                  |                | --- connect
+//                                  |   SOCKET       | --- bind
+//                                  |                | --- local_address,peer_address
+//                                  |                | --- shutdown
+//                                  |________________| --- set_reuseaddr,setsockopt
 //! \brief Base class for network sockets (TCP, UDP, etc.)
 //! \details Socket is generally used via a subclass. See TCPSocket and UDPSocket for usage examples.
 class Socket : public FileDescriptor {
@@ -103,6 +112,7 @@ class UDPSocket : public Socket {
 //! \include socket_example_1.cc
 
 // TCPSocket 是 Socket，在此基础之上，多了listen,accept方法
+// 针对 Socket构造函数的两个 参数domain,type,分别设置成AF_INET, SOCK_STREAM
 //! A wrapper around [TCP sockets](\ref man7::tcp)
 class TCPSocket : public Socket {
   private:
@@ -130,6 +140,7 @@ class TCPSocket : public Socket {
 
 // LocalStreamSocket是unix socket
 //! A wrapper around [Unix-domain stream sockets](\ref man7::unix)
+// 针对 Socket构造函数的两个 参数domain,type,分别设置成AF_UNIX, SOCK_STREAM
 class LocalStreamSocket : public Socket {
   public:
     //! Construct from a file descriptor

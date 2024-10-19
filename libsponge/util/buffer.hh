@@ -9,6 +9,13 @@
 #include <string_view>
 #include <sys/uio.h>
 #include <vector>
+//  Buffer:
+//                                   ________                     size()
+//     _storage            --------->|      |                   /
+//     _starting_offset    --------->|str() |  ---> string_view -> at(n)
+//           ^                       |______|                   \
+//           |                                                    copy()
+//      remove_prefix(n)
 
 //! \brief A reference-counted read-only string that can discard bytes from the front
 class Buffer {
@@ -59,6 +66,8 @@ class Buffer {
 //! + a payload. This allows us to prepend headers (e.g., to
 //! encapsulate a TCP payload in a TCPSegment, and then encapsulate
 //! the TCPSegment in an IPv4Datagram) without copying the payload.
+
+// BufferList表示不连续的Buffer,主要用于 封装数据帧，比如在TCP(Buffer)前面添加 IPV4(Buffer) Hdr
 class BufferList {
   private:
     std::deque<Buffer> _buffers{};
@@ -88,10 +97,12 @@ class BufferList {
 
     //! \brief Transform to a Buffer
     //! \note Throws an exception unless BufferList is contiguous
+    //转换成为Buffer,要求_buffers只有一个元素
     operator Buffer() const;
 
     //! \brief Discard the first `n` bytes of the string (does not require a copy or move)
     //类似BufferViewList的remove_prefix,用于移出n个字节
+    //移除BufferList中的n个字节
     void remove_prefix(size_t n);
 
     //! \brief Size of the string

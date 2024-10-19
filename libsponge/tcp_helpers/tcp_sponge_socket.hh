@@ -60,7 +60,8 @@ class TCPSpongeSocket : public LocalStreamSocket {
 
     //data_socket_pair.first->  LocalStreamSocket
     //data_socket_pair.second-> _thread_data
-    // dgramfd用于初始化_datagram_adapter，是数据的来源，并且设置成非阻塞的
+    // datagram_interface用于初始化_datagram_adapter，是数据的来源，并且_thread_data设置成非阻塞的
+    
     //! Construct LocalStreamSocket fds from socket pair, initialize eventloop
     TCPSpongeSocket(std::pair<FileDescriptor, FileDescriptor> data_socket_pair, AdaptT &&datagram_interface);
 

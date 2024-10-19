@@ -4,6 +4,7 @@
 #include "buffer.hh"
 #include "ethernet_header.hh"
 
+
 //! \brief Ethernet frame
 class EthernetFrame {
   private:

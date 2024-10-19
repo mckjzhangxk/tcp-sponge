@@ -70,6 +70,8 @@
         "__tree": "cpp",
         "set": "cpp",
         "queue": "cpp",
-        "thread": "cpp"
+        "thread": "cpp",
+        "map": "cpp",
+        "utility": "cpp"
     }
 }

@@ -7,6 +7,8 @@
 
 #include <optional>
 #include <queue>
+#include <map>
+#include <list>
 
 //! \brief A "network interface" that connects IP (the internet layer, or network layer)
 //! with Ethernet (the network access layer, or link layer).
@@ -40,6 +42,46 @@ class NetworkInterface {
     //! outbound queue of Ethernet frames that the NetworkInterface wants sent
     std::queue<EthernetFrame> _frames_out{};
 
+
+    std::map<uint32_t, EthernetAddress> _cache={};    
+    std::map<uint32_t,  std::list<EthernetFrame> > _delay_cache={};  
+    std::map<uint32_t, size_t> _cache_to_live={}; 
+    size_t _ms_since_last_tick={};
+      
+    void _make_arp_request(uint32_t ip){
+
+       if(_cache_to_live.find(ip)!=_cache_to_live.end()){
+          size_t ts=_cache_to_live[ip];
+          if(_ms_since_last_tick<ts+5*1000){
+              return;
+          }
+          
+       }
+       
+       _cache_to_live[ip]=_ms_since_last_tick;
+
+       ARPMessage m;
+
+       m.opcode= ARPMessage::OPCODE_REPLY;
+
+       m.sender_ethernet_address=_ethernet_address;
+       m.sender_ip_address=_ip_address.ipv4_numeric();
+
+        m.target_ethernet_address=ETHERNET_BROADCAST;
+        m.target_ip_address=ip;
+
+        EthernetFrame frame;
+        EthernetHeader& hdr=frame.header();
+    
+        hdr.type=EthernetHeader::TYPE_ARP;
+        hdr.src=_ethernet_address;
+        hdr.dst=ETHERNET_BROADCAST;
+        
+        frame.payload()=m.serialize();
+
+        _frames_out.push(frame);
+
+    }
   public:
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses
     NetworkInterface(const EthernetAddress &ethernet_address, const Address &ip_address);

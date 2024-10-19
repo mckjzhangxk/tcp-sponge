@@ -14,19 +14,30 @@
 //适配器的基类，主要就是返回配置（local,remote地址信息）与 设置是否listen
 //! \brief Basic functionality for file descriptor adaptors
 //! \details See TCPOverUDPSocketAdapter and TCPOverIPv4OverTunFdAdapter for more information.
+
+//  Address(src)        --->|—————————————————|         __________________________
+//  Address(dst)        --->| FdAdapterConfig |-------->|                        |
+//  lossRate(R/S)       --->|_________________|         |                        |
+//                                                      |    FdAdapterBase       |
+//                                is_listen ----------->|                        |
+//                                                      |________________________|
+// 
+//  注意：is_listen 表示是否收到syn数据包,不要与【服务器监听】混淆！！！！
 class FdAdapterBase {
   private:
-    FdAdapterConfig _cfg{};  //!< Configuration values，主要用于保存local,remote地址信息
+    FdAdapterConfig _cfg{};  //!< Configuration values，主要用于保存 source,destination 地址信息
     bool _listen = false;    //!< Is the connected TCP FSM in listen state?
 
   protected:
     FdAdapterConfig &config_mutable() { return _cfg; }
 
   public:
+    //listen 表示是否收到syn数据包,不要与【服务器监听】混淆！！！！
     //! \brief Set the listening flag
     //! \param[in] l is the new value for the flag
     void set_listening(const bool l) { _listen = l; }
 
+    //listen 表示是否收到syn数据包,不要与【服务器监听】混淆！！！！
     //! \brief Get the listening flag
     //! \returns whether the FdAdapter is listening for a new connection
     bool listening() const { return _listen; }

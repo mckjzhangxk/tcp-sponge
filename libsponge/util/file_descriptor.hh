@@ -12,8 +12,19 @@
 class FileDescriptor {
     //! \brief A handle on a kernel file descriptor.
     //! \details FileDescriptor objects contain a std::shared_ptr to a FDWrapper.
+
+    //  FDWrapper: fd的状态包装类
+    //        |  _read_count    |
+    // fd <-->|  _write_count   |
+    //        |  _closed        |
+    //        |  _eof           |
+    // close()
     class FDWrapper {
-      //文件描述符fd的包装类，不可被老被，具有close 方法
+      //文件描述符fd的包装类，不可被拷贝，具有close 方法
+      //记录在 fd上的操作
+      // 1.读写次数
+      // 2.是否关闭
+      // 3.是否EOF
       public:
         int _fd;                    //!< The file descriptor number returned by the kernel
         bool _eof = false;          //!< Flag indicating whether FDWrapper::_fd is at EOF
@@ -51,6 +62,19 @@ class FileDescriptor {
     void register_write() { ++_internal_fd->_write_count; }  //!< increment write count
 
   public:
+    //                               ________________     ----- set_blocking
+    //                              |                |    ---- read,read_count
+    //    _internal_fd(引用计数) --> | FileDescriptor |    ---- write,write_count
+    //          \                   |                |    ---- close
+    //           \                  |________________|    ----- eof(),closed(),fd_num()
+    //            \  duplicate()
+    //             \      ________________     ----- set_blocking
+    //              \    |                |    ---- read,read_count
+    //               \   | FileDescriptor |    ---- write,write_count
+    //                \  |                |    ---- close
+    //                   |________________|    ----- eof(),closed(),fd_num()
+
+
     //! Construct from a file descriptor number returned by the kernel
     explicit FileDescriptor(const int fd);
 

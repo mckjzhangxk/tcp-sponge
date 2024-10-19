@@ -62,16 +62,16 @@ TCPSpongeSocket<AdaptT>::TCPSpongeSocket(pair<FileDescriptor, FileDescriptor> da
 //                  
 //                            
 // eg:    read(fd,buf,n)
-//    _datagram_adapter(IN)-----------> tcp.receiver(tcp.segment_received(seg))----------->_thread_data(OUT)
+//    _datagram_adapter(IN)-----------> tcp.receiver(tcp.segment_received(seg))----------->_thread_data(OUT)-->read(fd,buf,n)
 //    
 
 // eg:    write(fd,buf,n)
-//    _thread_data(IN)-----------> tcp.sender(tcp.write())  ----------->_datagram_adapter(OUT)
+//    write(fd,buf,n)->_thread_data(IN)-----------> tcp.sender(tcp.write())  ----------->_datagram_adapter(OUT)
 //    
                       
 template <typename AdaptT>
 void TCPSpongeSocket<AdaptT>::_initialize_TCP(const TCPConfig &config) {
-    _tcp.emplace(config);
+    _tcp.emplace(config);//初始化 TCPConnection
 
     // Set up the event loop
 

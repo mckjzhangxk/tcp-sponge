@@ -5,7 +5,7 @@
 #include <sstream>
 
 using namespace std;
-
+//结构体的反序列化
 ParseResult ARPMessage::parse(const Buffer buffer) {
     NetParser p{buffer};
 
@@ -24,26 +24,26 @@ ParseResult ARPMessage::parse(const Buffer buffer) {
     }
 
     // read sender addresses (Ethernet and IP)
-    for (auto &byte : sender_ethernet_address) {
+    for (auto &byte : sender_ethernet_address) {//src mac
         byte = p.u8();
     }
-    sender_ip_address = p.u32();
+    sender_ip_address = p.u32(); //src ip
 
     // read target addresses (Ethernet and IP)
-    for (auto &byte : target_ethernet_address) {
+    for (auto &byte : target_ethernet_address) {//dst ip
         byte = p.u8();
     }
-    target_ip_address = p.u32();
+    target_ip_address = p.u32();//dst ip
 
     return p.get_error();
 }
-
+// 只有以太网 ,IPV4,并且是arp req或者arp resp的时候才返回true
 bool ARPMessage::supported() const {
     return hardware_type == TYPE_ETHERNET and protocol_type == EthernetHeader::TYPE_IPv4 and
            hardware_address_size == sizeof(EthernetHeader::src) and protocol_address_size == sizeof(IPv4Header::src) and
            ((opcode == OPCODE_REQUEST) or (opcode == OPCODE_REPLY));
 }
-
+//结构体的序列化
 string ARPMessage::serialize() const {
     if (not supported()) {
         throw runtime_error(

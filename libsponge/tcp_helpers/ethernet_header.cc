@@ -49,7 +49,7 @@ string EthernetHeader::serialize() const {
 }
 
 //! \returns A string with a textual representation of an Ethernet address
-string to_string(const EthernetAddress address) {
+string to_string(const EthernetAddress address) {//mac地址 77:xx:xx:dd:xx:99
     stringstream ss{};
     for (auto it = address.begin(); it != address.end(); it++) {
         ss.width(2);

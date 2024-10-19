@@ -11,6 +11,15 @@
 #include <utility>
 
 //使用 AdapterT _adapter 来执行 读写TCP Segment,有可能会 丢包
+// 
+// 注意 LossyFdAdapter 没有 继承子 FileAdapterBase,
+// 而是 通过 内部成员 AdapterT _adapter;
+// _adapter 支持的方法 进行了 包装，实现了和 _adapter相同的接口 
+
+// read    ===>    ret=adapter.read() =====> if random  ====> return ret
+// write   ===>    if random  =====>  adapter.write()
+// set_listening=> _adapter.set_listening()
+
 //! An adapter class that adds random dropping behavior to an FD adapter
 template <typename AdapterT>
 class LossyFdAdapter {
