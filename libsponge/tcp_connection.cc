@@ -176,6 +176,14 @@ void TCPConnection::_push_segments_out() {
         if (_sender.stream_in().error() || _receiver.stream_out().error()) {  // 如果本TCP已经发送过rst,那么 携带RST
             hdr.rst = true;
         }
+
+        size_t  sz=seg.payload().size();
+
+        if(sz!=seg.payloadSize){
+            fprintf(stderr,"payload size EORROR[%ld] -->[%ld]\n",seg.payloadSize,sz);
+            throw  "_push_segments_out layload size error";
+        }
+
         _segments_out.push(seg);
     }
 }

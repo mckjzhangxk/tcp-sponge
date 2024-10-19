@@ -89,6 +89,10 @@ expand_num () {
 }
 
 _socat_listen () {
+    _IN=$2
+    _OUT=$1
+    echo "socat tcp4-listen:${SERVER_PORT},reuseaddr,reuseport,linger=2 stdio >${_OUT} <${_IN} && sleep 0.1"
+
     coproc socat tcp4-listen:${SERVER_PORT},reuseaddr,reuseport,linger=2 stdio >"$1" <"$2" && sleep 0.1
     set +u
     [ -z "$COPROC_PID" ] && { echo "Error in _socat_listen"; exit 1; }
@@ -96,11 +100,21 @@ _socat_listen () {
 }
 
 _socat_connect () {
+    _IN=$2
+    _OUT=$1
+
+    echo "socat tcp4-connect:${TEST_HOST}:${SERVER_PORT},reuseaddr,reuseport,linger=2 stdio >${_OUT} <${_IN}"
     socat tcp4-connect:${TEST_HOST}:${SERVER_PORT},reuseaddr,reuseport,linger=2 stdio >"$1" <"$2" ||
         { echo "Error in _socat_connect"; exit 1; }
 }
 
 _rt_listen () {
+    _IN=$2
+    _OUT=$1
+    _PRG=$3
+    _ARG=$4
+
+    echo "coproc ${_PRG} -l ${_ARG} ${SERVER_PORT} > ${_OUT} <${_IN}"
     coproc $3 -l $4 ${SERVER_PORT} >"$1" <"$2" && sleep 0.1
     set +u
     [ -z "$COPROC_PID" ] && { echo "Error in _rt_listen"; exit 1; }
@@ -108,6 +122,11 @@ _rt_listen () {
 }
 
 _rt_connect () {
+      _IN=$2
+      _OUT=$1
+      _PRG=$3
+      _ARG=$4
+    echo "${_PRG} ${_ARG} ${SERVER_PORT} >${_OUT} <${_IN}"
     $3 $4 ${SERVER_PORT} >"$1" <"$2" || { echo "Error in _rt_connect"; exit 1; }
 }
 
@@ -156,7 +175,7 @@ make_test_file () {
 
 exit_cleanup () {
     set +u
-    rm -f "${TEST_IN_FILE}" "${TEST_OUT_FILE}" "${TEST_OUT2_FILE}"
+#    rm -f "${TEST_IN_FILE}" "${TEST_OUT_FILE}" "${TEST_OUT2_FILE}"
     [ ! -z "$COPROC_PID" ] && kill ${COPROC_PID}
 }
 
@@ -189,9 +208,14 @@ else
     REF_PROG="./apps/tcp_udp ${RTTO} ${WINSIZE} ${LOSS_UP} ${LOSS_DN}"
     TEST_PROG="./apps/tcp_udp ${RTTO} ${WINSIZE}"
 fi
+PREFIX=/home/zhangxk/project/my_tcp-sponge/debug1
 
 TEST_OUT_FILE=$(mktemp)
 TEST_IN_FILE=$(mktemp)
+
+TEST_IN_FILE=${PREFIX}${TEST_IN_FILE}
+TEST_OUT_FILE=${PREFIX}${TEST_OUT_FILE}
+
 make_test_file "${TEST_IN_FILE}" "${DATASIZE}"
 HASH_IN=$(sha256sum ${TEST_IN_FILE} | cut -d \  -f 1)
 HASH_OUT2=
@@ -216,6 +240,7 @@ case "$RSDMODE" in
         ;;
     D)  # test full-duplex
         TEST_OUT2_FILE=$(mktemp)
+        TEST_OUT2_FILE=${PREFIX}${TEST_OUT2_FILE}
         if [ "$CSMODE" = "c" ]; then
             ref_listen "${TEST_OUT_FILE}" "${TEST_IN_FILE}"
             test_connect "${TEST_OUT2_FILE}" "${TEST_IN_FILE}"
@@ -234,6 +259,12 @@ fi
 HASH_OUT=$(hash_file ${TEST_OUT_FILE})
 if [ ! -z "${HASH_OUT2}" ] && [ "${HASH_OUT}" != "${HASH_OUT2}" ] || [ "${HASH_IN}" != "${HASH_OUT}" ]; then
     echo ERROR: "$HASH_IN" neq "$HASH_OUT" or "$HASH_OUT2"
+    cp ${TEST_IN_FILE}  ${PREFIX}/in_"${SERVER_PORT}".data
+    cp ${TEST_OUT_FILE} ${PREFIX}/out1_"${SERVER_PORT}".data
+
+    if [ ! -z "${HASH_OUT2}" ]; then
+          cp ${TEST_OUT2_FILE} ${PREFIX}/out2_"${SERVER_PORT}".data
+    fi
     exit 1
 fi
 exit 0

@@ -13,6 +13,7 @@ class TCPSegment {
     Buffer _payload{};
 
   public:
+    size_t payloadSize={};
     //! \brief Parse the segment from a string
     // 把buffer 的内容解析到 TCPHeader和payload中,并且做了checksum的校验
     ParseResult parse(const Buffer buffer, const uint32_t datagram_layer_checksum = 0);

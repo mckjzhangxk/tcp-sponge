@@ -107,6 +107,7 @@ class TCPSender {
     std::queue<TCPSegment> _outstanding_segs{};
 
     void _transmit(TCPSegment & seg,bool is_new_segment =true){
+        seg.payloadSize=seg.payload().size();
         _segments_out.push(seg);
 
         if (is_new_segment) {
