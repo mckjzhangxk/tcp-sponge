@@ -8,7 +8,7 @@
 #include <string>
 #include <utility>
 
-//! The result of parsing or unparsing an IP datagram or TCP segment
+//! The result of parsing or unparsing an IP datagram, TCP segment, Ethernet frame, or ARP message
 enum class ParseResult {
     NoError = 0,      //!< Success
     BadChecksum,      //!< Bad checksum，错误的校验和
@@ -16,6 +16,8 @@ enum class ParseResult {
     WrongIPVersion,   //!< Got a version of IP other than 4,IPV4版本错误
     HeaderTooShort,   //!< Header length is shorter than minimum required,IP头部不足20字节
     TruncatedPacket,  //!< Packet length is shorter than header claims,收到的buffer size < Ip数据包总长度 
+    Unsupported       //!< Packet uses unsupported features
+
 };
 
 //! Output a string representation of a ParseResult

@@ -38,27 +38,42 @@ class FdAdapterBase {
     //! \brief Get the current configuration (mutable)
     //! \returns a mutable reference
     FdAdapterConfig &config_mut() { return _cfg; }
+
+    //! Called periodically when time elapses
+    void tick(const size_t) {}
 };
 
 //结合UDPSocket和 FdAdapterBase, 组成一个TCPSocket
 //  UDPSocket提供 发送/接受 能力
 //  FdAdapterBase： 提供 发送/接受 端口信息
 //! \brief A FD adaptor that reads and writes TCP segments in UDP payloads
-class TCPOverUDPSocketAdapter : public FdAdapterBase, public UDPSocket {
+class TCPOverUDPSocketAdapter : public FdAdapterBase {
+  private:
+    UDPSocket _sock;
+
   public:
     //! Construct from a UDPSocket sliced into a FileDescriptor
-    explicit TCPOverUDPSocketAdapter(FileDescriptor &&fd) : UDPSocket(std::move(fd)) {}
+
+    explicit TCPOverUDPSocketAdapter(UDPSocket &&sock) : _sock(std::move(sock)) {}
     
     //使用udp的recv方法，读取一个数据包，解析验证TCPSegment的合法性
     //如果是一个syn数据包， 表示一个新的connection建立
     // 1.取消listen状态
     // 2.保存对端地址到config().dest中，用于将来的通信
+
+
     //! Attempts to read and return a TCP segment related to the current connection from a UDP payload
     std::optional<TCPSegment> read();
 
     //把seg发送出去， 根据config 填写好 源端口，目的端口信息
     //! Writes a TCP segment into a UDP payload
     void write(TCPSegment &seg);
+
+    //! Access the underlying UDP socket
+    operator UDPSocket &() { return _sock; }
+
+    //! Access the underlying UDP socket
+    operator const UDPSocket &() const { return _sock; }
 };
 
 //! Typedef for TCPOverUDPSocketAdapter

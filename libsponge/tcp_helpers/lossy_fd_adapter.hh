@@ -41,7 +41,7 @@ class LossyFdAdapter {
 
     //通过fd构建 _adapter成员
     //! Construct from a FileDescriptor appropriate to the AdapterT constructor
-    explicit LossyFdAdapter(FileDescriptor &&fd) : _adapter(std::move(fd)) {}
+    explicit LossyFdAdapter(AdapterT &&adapter) : _adapter(std::move(adapter)) {}
 
      //有可能不调用_adapter.read(seg);
     //! \brief Read from the underlying AdapterT instance, potentially dropping the read datagram
@@ -71,6 +71,9 @@ class LossyFdAdapter {
     void set_listening(const bool l) { _adapter.set_listening(l); }      //!< FdAdapterBase::set_listening passthrough
     const FdAdapterConfig &config() const { return _adapter.config(); }  //!< FdAdapterBase::config passthrough
     FdAdapterConfig &config_mut() { return _adapter.config_mut(); }      //!< FdAdapterBase::config_mut passthrough
+    void tick(const size_t ms_since_last_tick) {
+        _adapter.tick(ms_since_last_tick);
+    }  //!< FdAdapterBase::tick passthrough
     //!@}
 };
 
