@@ -67,8 +67,7 @@ void StreamReassembler::_push(const string &data, uint64_t start_index){
         {
             if(it->start_index>start_index){
                 struct Block b{start_index,end_index,std::string{dv}};
-                _blocks.insert(it,b);
-                it--;
+                it=_blocks.insert(it,b);
                 _block_sz+=b.data.size();
                 break;
             }

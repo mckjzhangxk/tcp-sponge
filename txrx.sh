@@ -208,7 +208,7 @@ else
     REF_PROG="./apps/tcp_udp ${RTTO} ${WINSIZE} ${LOSS_UP} ${LOSS_DN}"
     TEST_PROG="./apps/tcp_udp ${RTTO} ${WINSIZE}"
 fi
-PREFIX=/home/zhangxk/project/my_tcp-sponge/debug1
+PREFIX=/home/hack520/project/sponge/debug
 
 TEST_OUT_FILE=$(mktemp)
 TEST_IN_FILE=$(mktemp)
