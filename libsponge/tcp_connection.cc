@@ -208,7 +208,7 @@ void TCPConnection::_clean_shutdown() {
     // Preq1,收到 Fin(remote)
     bool preq1 = _receiver.stream_out().input_ended();
     // Preq2, 发出 Fin(local),这里注意，EOF并不能说明一定发送了FIN，调用_sender.fillwindow后才能说明一定发送了FIN
-    bool preq2 = _fin_sent();
+    bool preq2 = _sender.stream_in().eof() && (2 + _sender.stream_in().bytes_written()) == _sender.next_seqno_absolute();
 
     // Preq3,说明收到了 FIN-ACK（local）
     bool preq3 = preq2 && (_sender.bytes_in_flight() == 0);
@@ -238,6 +238,3 @@ void TCPConnection::_push_ack_segment() {
     _push_segments_out();
 }
 
-bool TCPConnection::_fin_sent() {
-    return _sender.stream_in().eof() && (2 + _sender.stream_in().bytes_written()) == _sender.next_seqno_absolute();
-}

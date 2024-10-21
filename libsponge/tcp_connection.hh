@@ -47,7 +47,6 @@ class TCPConnection {
     void _push_ack_segment();
 
 
-    bool _fin_sent();
   public:
     //! \name "Input" interface for the writer
     //!@{
