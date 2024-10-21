@@ -52,7 +52,7 @@ class LossyFdAdapter {
     //! Construct from a FileDescriptor appropriate to the AdapterT constructor
     explicit LossyFdAdapter(AdapterT &&adapter) : _adapter(std::move(adapter)) {}
 
-     //有可能不调用_adapter.read(seg);
+     //有可能不把调用_adapter.read(seg)的结果上传
     //! \brief Read from the underlying AdapterT instance, potentially dropping the read datagram
     //! \returns std::optional<TCPSegment> that is empty if the segment was dropped or if
     //!          the underlying AdapterT returned an empty value
