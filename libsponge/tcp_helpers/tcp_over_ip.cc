@@ -98,7 +98,7 @@ optional<TCPSegment> TCPOverIPv4Adapter::unwrap_tcp_in_ip(const InternetDatagram
 
     return tcp_seg;
 }
-
+/*
             //   __________________________
             //  |   _listen=false          |              -------------
             //  |    src_ip=${myip}        |------------>| Ip Hdr     |
@@ -109,7 +109,7 @@ optional<TCPSegment> TCPOverIPv4Adapter::unwrap_tcp_in_ip(const InternetDatagram
             //  |__________________________|             |            |
             //                                           | TcpPayload |
             //                                           |____________|
-
+*/
 //! Takes a TCP segment, sets port numbers as necessary, and wraps it in an IPv4 datagram
 //! \param[in] seg is the TCP segment to convert
 InternetDatagram TCPOverIPv4Adapter::wrap_tcp_in_ip(TCPSegment &seg) {

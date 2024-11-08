@@ -54,7 +54,7 @@ class NetworkInterface {
     std::map<uint32_t,  std::list<EthernetFrame> > _delay_cache={};  //保存需要 延迟发送的EthernetFrame,当发送的四号，需要把dst mac填好
 
     std::map<uint32_t, size_t> _last_arp_timestamps={};
-    size_t _ms_since_last_tick={};
+    size_t _ms_passed ={};
       
     void _make_arp_request(uint32_t ip);
   public:
@@ -62,7 +62,9 @@ class NetworkInterface {
     NetworkInterface(const EthernetAddress &ethernet_address, const Address &ip_address);
 
     //! \brief Access queue of Ethernet frames awaiting transmission
-    std::queue<EthernetFrame> &frames_out() { return _frames_out; }
+    std::queue<EthernetFrame> &frames_out() {
+        return _frames_out;
+    }
 
     //! \brief Sends an IPv4 datagram, encapsulated in an Ethernet frame (if it knows the Ethernet destination address).
 

@@ -9,6 +9,7 @@
 #include <string_view>
 #include <sys/uio.h>
 #include <vector>
+/*
 //  Buffer:
 //                                   ________                     size()
 //     _storage            --------->|      |                   /
@@ -16,7 +17,7 @@
 //           ^                       |______|                   \
 //           |                                                    copy()
 //      remove_prefix(n)
-
+*/
 //! \brief A reference-counted read-only string that can discard bytes from the front
 class Buffer {
   private:
