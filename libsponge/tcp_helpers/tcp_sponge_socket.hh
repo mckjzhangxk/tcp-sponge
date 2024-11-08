@@ -77,6 +77,7 @@ class TCPSpongeSocket : public LocalStreamSocket {
     //! Construct from the interface that the TCPConnection thread will use to read and write datagrams
     explicit TCPSpongeSocket(AdaptT &&datagram_interface);
 
+    //等待_tcp_main()的退出。
     //! Close socket, and wait for TCPConnection to finish
     //! \note Calling this function is only advisable if the socket has reached EOF,
     //! or else may wait foreever for remote peer to close the TCP connection.
@@ -88,12 +89,14 @@ class TCPSpongeSocket : public LocalStreamSocket {
     // B. _tcp->connect(),发送第一个syn
     // C. _tcp_loop([&] { return _tcp->state() == TCPState::State::SYN_SENT; }),直到状态发生变化
     // D.启动_tcp_thread
+    //  直到 tcp链接 成为LISTEN 才会返回！！
     //! Connect using the specified configurations; blocks until connect succeeds or fails
     void connect(const TCPConfig &c_tcp, const FdAdapterConfig &c_ad);
 
 
     //服务端的函数，在完成三次握手前，一直处于loop,完成后启动_tcp_thread
     //! Listen and accept using the specified configurations; blocks until accept succeeds or fails
+    //  直到 tcp链接 成为LISTEN 才会返回！！
     void listen_and_accept(const TCPConfig &c_tcp, const FdAdapterConfig &c_ad);
 
     //! When a connected socket is destructed, it will send a RST
@@ -121,6 +124,7 @@ class TCPSpongeSocket : public LocalStreamSocket {
 };
 
 using TCPOverUDPSpongeSocket = TCPSpongeSocket<TCPOverUDPSocketAdapter>;
+//使用tun作为adapter
 using TCPOverIPv4SpongeSocket = TCPSpongeSocket<TCPOverIPv4OverTunFdAdapter>;
 using TCPOverIPv4OverEthernetSpongeSocket = TCPSpongeSocket<TCPOverIPv4OverEthernetAdapter>;
 
@@ -151,6 +155,7 @@ using LossyTCPOverIPv4SpongeSocket = TCPSpongeSocket<LossyTCPOverIPv4OverTunFdAd
 class CS144TCPSocket : public TCPOverIPv4SpongeSocket {
   public:
     CS144TCPSocket();
+    // 连接address， 绑定本地为 169.254.144.9(tun设备),rand_port
     void connect(const Address &address);
 };
 

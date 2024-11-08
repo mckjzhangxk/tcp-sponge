@@ -29,7 +29,10 @@ class EventLoop {
         Direction direction;  //!< Direction::In for reading from fd, Direction::Out for writing to fd.
         CallbackT callback;   //!< A callback that reads or writes fd.如果fd上触发direction事件，调用callback
         InterestT interest;   //!< A callback that returns `true` whenever fd should be polled.表示是否可以被poll
-        CallbackT cancel;     //!< A callback that is called when the rule is cancelled (e.g. on hangup)，当fd hungup,本规则被取消被调用，并且本办法
+        
+        CallbackT cancel;     //!< A callback that is called when the rule is cancelled (e.g. on hangup)，
+        //针对fd hangup或者 cloesed的回调函数
+
         //canel的原因是由于异常导致
         //! Returns the number of times fd has been read or written, depending on the value of Rule::direction.
         //! \details This function is used internally by EventLoop; you will not need to call it
@@ -54,12 +57,24 @@ class EventLoop {
                   const InterestT &interest = [] { return true; },
                   const CallbackT &cancel = [] {});
     //1.根据_rules，筛选(_rules[i]->interest()->true)出需要 被poll的 全部fds
-    // 2.调用epoll(fds,timeout),如果超时，返回TIMEOUT,失败返回EXIT
-    // 3.遍历每个fds
-    //   A.,事件被触发:调用对应rule[i].callback()
-    //   B. fd是hup:调用对应rule[i].cancle(),并异常规律
-    //   C. fd发生错误，抛出异常
+    //2.如果fd closed()或者hangup,移除规则，并且调用 cancel（）
+    //3.1调用epoll(fds,timeout),如果超时，返回TIMEOUT,失败（poll被中断）返回EXIT
+    //3.2 如果 没有需要被poll的fd,返回EXIT
+    //4.遍历每个fds
+    
+    //   A. 如果fd发生错误（POLLERR | POLLNVAL），抛出异常
+    //   B. 如果fd hangup(),同上 调用cancle,并且移除规则
+    //   C.,事件被触发:调用对应rule[i].callback(), 如果rule[i].service_count()没有发生变化，抛出异常
     //! Calls [poll(2)](\ref man2::poll) and then executes callback for each ready fd.
+
+
+    //返回值
+    // EXIT: 没有可被POLL 或者 POLL被中断
+    // TIMEOUT: poll超时
+    // 异常：
+    //  1.某个fd 上 发生错误（POLLERR | POLLNVAL）
+    //  2.busy wait detected: callback did not read/write fd and is still interested
+    // SUCCESS: 以上都未发生
     Result wait_next_event(const int timeout_ms);
 };
 

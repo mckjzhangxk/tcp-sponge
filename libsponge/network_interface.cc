@@ -38,53 +38,52 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
     
     hdr.type=EthernetHeader::TYPE_IPv4;
     hdr.src=_ethernet_address;
-    frame.payload()=dgram.serialize();
+    frame.payload()=move(dgram.serialize());
 
-    if(_cache.find(next_hop_ip)!=_cache.end()){
-        hdr.dst=_cache[next_hop_ip];
+    if(_cache.count(next_hop_ip)&&_cache[next_hop_ip].expired_ts<_ms_since_last_tick){
+        hdr.dst=_cache[next_hop_ip].mac;
+        _frames_out.push(frame);
     }else{
-        if(_delay_cache.find(next_hop_ip)==_delay_cache.end()){
+        if(_delay_cache.count(next_hop_ip)==0){
             _delay_cache[next_hop_ip]=std::list<EthernetFrame>();
         }
         auto& lst=_delay_cache[next_hop_ip];
-        lst.push_front(frame);
-
-
+        lst.emplace_back(frame);
         //准备发送一个arp request
         _make_arp_request(next_hop_ip);
 
     }
 
-    _frames_out.push(frame);
 }
 
 //! \param[in] frame the incoming Ethernet frame
 optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &frame) {
     const EthernetHeader& hdr=frame.header();
     if(hdr.dst!=_ethernet_address&&hdr.dst!=ETHERNET_BROADCAST){
-         return {};
+         return nullopt;
     }
     const BufferList &payload=frame.payload();
-    if(hdr.type==EthernetHeader::TYPE_ARP){
+    if(hdr.type==EthernetHeader::TYPE_IPv4){    //payload是ipv4数据包
         InternetDatagram dgram;
-        if(ParseResult::NoError==dgram.parse(payload)){
+        if(ParseResult::NoError==dgram.parse(payload)){//成功解析 ipv4数据包
             return dgram;
         }
     }else if(hdr.type==EthernetHeader::TYPE_ARP){
         ARPMessage argm;
        
-         if(ParseResult::NoError== argm.parse(payload)){
-            _cache[argm.sender_ip_address]=argm.sender_ethernet_address;
-            _cache_to_live[argm.sender_ip_address]=_ms_since_last_tick;
+         if(ParseResult::NoError== argm.parse(payload)){//成功解析 arp数据包
+
+            _cache[argm.sender_ip_address].mac=argm.sender_ethernet_address;
+            _cache[argm.sender_ip_address].expired_ts=_ms_since_last_tick+30*1000;
 
 
-            if(argm.opcode==ARPMessage::OPCODE_REQUEST){
+            if(argm.opcode==ARPMessage::OPCODE_REQUEST){//arp request
                 EthernetFrame frame;
                 EthernetHeader& hdr=frame.header();
                 hdr.src=_ethernet_address;
                 hdr.dst=argm.sender_ethernet_address;
 
-                argm.opcode=ARPMessage::OPCODE_REPLY;
+                argm.opcode=ARPMessage::OPCODE_REPLY;//回复 arp reply
 
                 argm.target_ethernet_address=argm.sender_ethernet_address;
                 argm.target_ip_address=argm.sender_ip_address;
@@ -93,10 +92,10 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
                 argm.sender_ip_address=_ip_address.ipv4_numeric();
 
 
-                frame.payload()=argm.serialize();
+                frame.payload()=move(argm.serialize());
 
                 _frames_out.push(frame);
-            }else{
+            }else{//arp reply
                 uint32_t target_ip=argm.sender_ip_address;
                 auto& target_mac_addr=argm.sender_ethernet_address;
 
@@ -112,19 +111,50 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
             
         }
     }
-    return {};
+    return nullopt;
 }
-
+ 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void NetworkInterface::tick(const size_t ms_since_last_tick) { 
-    
     _ms_since_last_tick=ms_since_last_tick;
-   
-   for(auto it=_cache_to_live.begin();it!=_cache_to_live.end();it++){
-        size_t ts=it->second;
-        if(ms_since_last_tick>ts+30*1000){
-            _cache.erase(it->first);
-            _cache_to_live.erase(it);
-        }
-   }
+
+    for(auto& x:_last_arp_timestamps){
+        _make_arp_request(x.first);
+    }
  }
+
+
+ //5s以内如果发送了arp请求，直接返回，否则
+ void NetworkInterface::_make_arp_request(uint32_t ip){
+
+       if(_last_arp_timestamps.count(ip)){
+          size_t ts=_last_arp_timestamps[ip];
+          if(_ms_since_last_tick<ts+5*1000){//5s以内 发送过对ip的arp request
+              return;
+          }
+       }
+       //记录本次发生的时间
+       _last_arp_timestamps[ip]=_ms_since_last_tick;
+
+       ARPMessage m;
+
+       m.opcode= ARPMessage::OPCODE_REQUEST;
+
+       m.sender_ethernet_address=_ethernet_address;
+       m.sender_ip_address=_ip_address.ipv4_numeric();
+
+        m.target_ethernet_address={0, 0, 0, 0, 0, 0};
+        m.target_ip_address=ip;
+
+        EthernetFrame frame;
+        EthernetHeader& hdr=frame.header();
+    
+        hdr.type=EthernetHeader::TYPE_ARP;
+        hdr.src=_ethernet_address;
+        hdr.dst=ETHERNET_BROADCAST;
+        
+        frame.payload()=move(m.serialize());
+
+        _frames_out.push(frame);
+
+    }

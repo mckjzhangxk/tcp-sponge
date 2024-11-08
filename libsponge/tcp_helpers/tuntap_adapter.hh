@@ -48,6 +48,7 @@ class TCPOverIPv4OverTunFdAdapter : public TCPOverIPv4Adapter {
     //! Creates an IPv4 datagram from a TCP segment and writes it to the TUN device
     void write(TCPSegment &seg) { _tun.write(wrap_tcp_in_ip(seg).serialize()); }
 
+    // 非常重要，这样 就把一个Adapter转换成一个FileDescriber
     //! Access the underlying TUN device
     operator TunFD &() { return _tun; }
 
@@ -61,9 +62,9 @@ using LossyTCPOverIPv4OverTunFdAdapter = LossyFdAdapter<TCPOverIPv4OverTunFdAdap
 
 
 // TCPSegment read():
-//                               _______________                      ————————————————————
-//              EthernetFrame    |             |  InternetDatagram   |                    |
-//_tap.read() ---------------->  |   NIC       |-------------------> | TCPOverIPv4Adapter |---->  TCPSegment
+//                               _______________                       ————————————————————
+//              EthernetFrame    |             |  InternetDatagram    |                    |
+//_tap.read() ---------------->  |   NIC       |------------------->  | TCPOverIPv4Adapter |---->  TCPSegment
 //                               |_____________|         |            |____________________|
 //                                  recv_frame           |
 //                                                       |   ArpMessage
@@ -115,6 +116,7 @@ class TCPOverIPv4OverEthernetAdapter : public TCPOverIPv4Adapter {
     //! Called periodically when time elapses
     void tick(const size_t ms_since_last_tick);
 
+    // 非常重要，这样 就把一个Adapter转换成一个FileDescriber
     //! Access the underlying raw Ethernet connection
     operator TapFD &() { return _tap; }
 

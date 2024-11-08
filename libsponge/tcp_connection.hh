@@ -6,6 +6,67 @@
 #include "tcp_sender.hh"
 #include "tcp_state.hh"
 
+// 一个 TCP Connection 就是 OutBound，InBound的组合，已经 这两个
+// 对象的状态 维护。
+//    bool active()
+//    TCPState state() 
+
+//  A1. OutBound 最主要的是把 byte 转换成为 TcpSegment。
+
+// 
+//                  ___________
+//                 |          |
+//       byte  ->  | OutBound |  -> TcpSegment
+//                 |__________|
+//                     
+//   以下是主动发送数据的方法           输出队列
+//   connect();                     queue<TCPSegment>  segments_out()
+//   write(string)                  
+//   end_input_stream()
+
+//   OutBound容量状态
+//   remaining_outbound_capacity()
+
+
+//  A2.由于TCP的可靠传输， 还有以下方式被动让数据发出：
+// 
+//                     ___________
+//                    |          |
+//       ack,sws  ->  | OutBound |  -> TcpSegment
+//                    |__________|
+//   
+//   segment_received(TCPSegment)
+//   tick()
+//   bytes_in_flight()
+
+
+// B.InBound 最主要的是把 byte 转换成为 byte
+//                    ___________
+//                   |         |
+//    TcpSegment  -> | InBound |  ---------> byte
+//                   |_________|
+//      
+//  segment_received(TCPSegment)             inbound_stream()
+//  time_since_last_segment_received()       unassembled_bytes()
+// 
+
+ 
+
+
+//                            ___________________
+//  1.outbound_stream   ----> |                 | ----> 3.segments_out
+//                            |  TCPConnection  |
+//                            |                 |
+// 2.segment_received   ----> |_________________| ----> 4.inbound_stream
+// 
+//  
+// TCPConnection的I/O方法
+// 
+//  1.size_t write(string)
+//  2.void segment_received(TCPSegment);
+//  3.queue<TCPSegment>  segments_out()
+//  4.ByteStream inbound_stream()
+    
 //! \brief A complete endpoint of a TCP connection
 class TCPConnection {
   private:
@@ -47,7 +108,6 @@ class TCPConnection {
     void _push_ack_segment();
 
 
-    bool _fin_sent();
   public:
     //! \name "Input" interface for the writer
     //!@{

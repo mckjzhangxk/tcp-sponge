@@ -9,6 +9,11 @@
 #include <queue>
 #include <map>
 #include <list>
+struct ArpCache
+{
+  EthernetAddress mac;
+  size_t expired_ts; //过期的时间
+};
 
 //! \brief A "network interface" that connects IP (the internet layer, or network layer)
 //! with Ethernet (the network access layer, or link layer).
@@ -31,57 +36,27 @@
 //! the network interface passes it up the stack. If it's an ARP
 //! request or reply, the network interface processes the frame
 //! and learns or replies as necessary.
+
 class NetworkInterface {
   private:
     //! Ethernet (known as hardware, network-access-layer, or link-layer) address of the interface
-    EthernetAddress _ethernet_address;
+    EthernetAddress _ethernet_address;//NIC的mac地址
 
     //! IP (known as internet-layer or network-layer) address of the interface
-    Address _ip_address;
+    Address _ip_address;//NIC的ip地址
 
     //! outbound queue of Ethernet frames that the NetworkInterface wants sent
     std::queue<EthernetFrame> _frames_out{};
 
 
-    std::map<uint32_t, EthernetAddress> _cache={};    
-    std::map<uint32_t,  std::list<EthernetFrame> > _delay_cache={};  
-    std::map<uint32_t, size_t> _cache_to_live={}; 
+    std::map<uint32_t, ArpCache> _cache={};//字典： ipv4->mac地址
+    
+    std::map<uint32_t,  std::list<EthernetFrame> > _delay_cache={};  //保存需要 延迟发送的EthernetFrame,当发送的四号，需要把dst mac填好
+
+    std::map<uint32_t, size_t> _last_arp_timestamps={};
     size_t _ms_since_last_tick={};
       
-    void _make_arp_request(uint32_t ip){
-
-       if(_cache_to_live.find(ip)!=_cache_to_live.end()){
-          size_t ts=_cache_to_live[ip];
-          if(_ms_since_last_tick<ts+5*1000){
-              return;
-          }
-          
-       }
-       
-       _cache_to_live[ip]=_ms_since_last_tick;
-
-       ARPMessage m;
-
-       m.opcode= ARPMessage::OPCODE_REPLY;
-
-       m.sender_ethernet_address=_ethernet_address;
-       m.sender_ip_address=_ip_address.ipv4_numeric();
-
-        m.target_ethernet_address=ETHERNET_BROADCAST;
-        m.target_ip_address=ip;
-
-        EthernetFrame frame;
-        EthernetHeader& hdr=frame.header();
-    
-        hdr.type=EthernetHeader::TYPE_ARP;
-        hdr.src=_ethernet_address;
-        hdr.dst=ETHERNET_BROADCAST;
-        
-        frame.payload()=m.serialize();
-
-        _frames_out.push(frame);
-
-    }
+    void _make_arp_request(uint32_t ip);
   public:
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses
     NetworkInterface(const EthernetAddress &ethernet_address, const Address &ip_address);
@@ -93,6 +68,10 @@ class NetworkInterface {
 
     //! Will need to use [ARP](\ref rfc::rfc826) to look up the Ethernet destination address for the next hop
     //! ("Sending" is accomplished by pushing the frame onto the frames_out queue.)
+    
+    // 把IPV4数据包dgram 在LAN 下发送到下一跳 next_hop
+    // 如果next_hop的 mac地址已知，直接封装成一个Ethnet数据包存入_frames_out
+    // 否则发送ARP请求 解析mac地址后 再发送
     void send_datagram(const InternetDatagram &dgram, const Address &next_hop);
 
     //! \brief Receives an Ethernet frame and responds appropriately.
@@ -100,6 +79,11 @@ class NetworkInterface {
     //! If type is IPv4, returns the datagram.
     //! If type is ARP request, learn a mapping from the "sender" fields, and send an ARP reply.
     //! If type is ARP reply, learn a mapping from the "target" fields.
+
+    // 收到一个Ethernet包，如果payload是
+    // 1.IPV4, 解析，然后返回
+    // 2.ARP-Req: 学习ip->map对应关系，回复 reply
+    // 3.ARP-Reply: 学习ip->map对应关系， 
     std::optional<InternetDatagram> recv_frame(const EthernetFrame &frame);
 
     //! \brief Called periodically when time elapses
