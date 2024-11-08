@@ -19,7 +19,7 @@ void get_URL(const string &host, const string &path) {
     // the "eof" (end of file).
 
     
-    CS144TCPSocket sock{};
+    FullStackSocket sock{};
     sock.connect(Address(host,"http"));
     sock.write("GET "+path+" HTTP/1.1\r\nHost: "+host+"\r\n\r\n");
     sock.shutdown(SHUT_WR);
@@ -31,7 +31,7 @@ void get_URL(const string &host, const string &path) {
     return;
 
 }
-
+// ./webget cs144.keithw.org /hasher/xyzzy 2>/dev/null
 int main(int argc, char *argv[]) {
     try {
         if (argc <= 0) {
