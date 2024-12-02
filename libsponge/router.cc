@@ -44,6 +44,7 @@ void Router::route_one_datagram(InternetDatagram &dgram) {
     uint8_t max_prefix_len=0;
 
     int index=-1,i=0;
+    dgram.header().ttl--;
     for(auto& entry:_routetable){
         uint32_t mask=0;
         for (size_t i = 0; i < entry.prefix_length; i++)
