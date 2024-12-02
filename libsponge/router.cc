@@ -43,8 +43,9 @@ void Router::route_one_datagram(InternetDatagram &dgram) {
     uint32_t dstip=dgram.header().dst;
     uint8_t max_prefix_len=0;
 
-    int index=-1,i=0;
+    int index=-1,k=0;
     dgram.header().ttl--;
+    
     for(auto& entry:_routetable){
         uint32_t mask=0;
         for (size_t i = 0; i < entry.prefix_length; i++)
@@ -52,11 +53,11 @@ void Router::route_one_datagram(InternetDatagram &dgram) {
             mask|=(1<<(31-i));
         }
         
-        if((mask& entry.route_prefix)==(mask&dstip) && entry.prefix_length>max_prefix_len ){
+        if((mask& entry.route_prefix)==(mask&dstip) && entry.prefix_length>=max_prefix_len ){
                 max_prefix_len=entry.prefix_length;
-                index=i;
+                index=k;
         }
-        i++;
+	k++;
     }
     
     

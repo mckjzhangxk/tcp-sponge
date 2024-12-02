@@ -49,7 +49,7 @@ struct RouteTableEntry{
 class Router {
     //! The router's collection of network interfaces
     std::vector<AsyncNetworkInterface> _interfaces{};
-    std::vector<RouteTableEntry> _routetable;
+    std::vector<RouteTableEntry> _routetable{};
     //! Send a single datagram from the appropriate outbound interface to the next hop,
     //! as specified by the route with the longest prefix_length that matches the
     //! datagram's destination address.
